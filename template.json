@@ -1,0 +1,25 @@
+{
+	"template_name": "c-desktop-windows",
+	"friendly_name": "C Desktop Windows",
+	"dirs":
+	[
+		{
+			"name": "src",
+			"files":
+			[
+				{
+					"name": "main.c",
+					"read_only": false,
+					"text": "int main(int argc, char **argv){}"
+				
+				}
+
+			]
+		},
+
+		{
+			"name": "dirname2"
+		}
+
+	]
+}
