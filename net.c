@@ -580,6 +580,7 @@ int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 }
 
 
+#define INADDR_ANY  0x0
 
 void dns_connect()
 {
@@ -645,8 +646,6 @@ void dns_connect()
 	LogMessageA("Length: %1!u!\n", len);
 
 
-	//Bind();
-
 	
 	len = SendTo(socket, buf, len, 0, &Addr, sizeof(Addr));
 	if(len == -1)
@@ -657,6 +656,18 @@ void dns_connect()
 
 
 	LogMessageA("Receiving...\n");
+
+
+	/*
+	Addr.Port = 0;
+	Addr.Ipv4 = INADDR_ANY;
+	error = Bind(socket, &Addr, sizeof(Addr));
+	if(error)
+	{
+		LogMessageA("Bind failed: %1!u!\n", WSAGetLastError());	
+		return;
+	}
+	*/
 
 
 	len = RecvFrom(socket, buf, 512, 0, 0, 0);
