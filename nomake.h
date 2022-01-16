@@ -73,6 +73,9 @@
 #define STATUS_INVALID_PARAMETER_4     0xC00000F2L
 
 
+#define STATUS_DLL_NOT_FOUND           0xC0000135L
+
+
 #define ERROR_INVALID_MONITOR_HANDLE   0x000005B5L
 
 
@@ -2788,6 +2791,8 @@ unsigned long __stdcall NtSetInformationKey(
 	unsigned long *KeySetInformationLength);
 
 
+
+
 typedef enum _KEY_VALUE_INFORMATION_CLASS
 {
 	KeyValueBasicInformation,
@@ -2799,6 +2804,28 @@ typedef enum _KEY_VALUE_INFORMATION_CLASS
 } KEY_VALUE_INFORMATION_CLASS;
 
 
+typedef struct _KEY_VALUE_FULL_INFORMATION
+{
+	unsigned long TitleIndex;
+	unsigned long Type;
+	unsigned long DataOffset;
+	unsigned long DataLength;
+	unsigned long NameLength;
+	wchar_t Name[1];
+} KEY_VALUE_FULL_INFORMATION;
+
+
+typedef struct _KEY_VALUE_PARTIAL_INFORMATION
+{
+	unsigned long TitleIndex;
+	unsigned long Type;
+	unsigned long DataLength;
+	char Data[1];
+} KEY_VALUE_PARTIAL_INFORMATION;
+
+
+
+// Returns a value entry for a registry key
 unsigned long __stdcall NtQueryValueKey(
 	void *KeyHandle,
 	UNICODE_STRING *ValueName,
@@ -2807,6 +2834,8 @@ unsigned long __stdcall NtQueryValueKey(
 	unsigned long Length,
 	unsigned long *ResultLength);
 
+
+// Gets information about the value entries of an open key.
 unsigned long __stdcall NtEnumerateValueKey(
 	void *KeyHandle,
 	unsigned long Index,

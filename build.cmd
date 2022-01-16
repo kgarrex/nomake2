@@ -5,7 +5,7 @@
 :: /ENTRY:main
 
 @echo off
-cl -c -GS- -nologo -D"SUBSYSTEM_CONSOLE" nomake.c helper.c
+cl -c -wd4047 -wd4022 -GS- -nologo -D"SUBSYSTEM_CONSOLE" nomake.c helper.c
 
 ml -c -D"SYSCALL_NTQUERYINFORMATIONPROCESS"=b9h -D"SYSCALL_NTCREATEIOCOMPLETION"=177h -nologo -Zf lib.asm test.asm
 
