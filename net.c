@@ -520,6 +520,22 @@ typedef struct nm_dns
 } nm_dns_t;
 
 
+void dns_add_qname(nm_dns_t *dns, char *host, int len)
+{
+	char *ptr = dns->buf, *tmp = host;
+	char _len;
+
+	for(int i = 0; i < len; ++i)
+	{
+		if(host[i] != '.') continue;
+		_len = &host[i] - tmp;
+
+		tmp[0] = _len;
+		//nm_memcpy(&tmp[1], 
+	}
+}
+
+
 int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 {
 	char *ptr = dns->buf;
