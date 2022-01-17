@@ -442,6 +442,7 @@ void __stdcall LoadWinsock()
  */
 #define WSAEINVAL      10022
 #define WSAEWOULDBLOCK 10035
+#define WSAETIMEDOUT   10060
 
 
 #define AF_INET  2
@@ -572,19 +573,24 @@ int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 	ptr += 2;
 
 
-	short tsts = QTYPE_A;
-	char *tstc = (char*)&tsts;
-	LogMessageA("NUMBER: 0x%1!x!\n", tstc[1]);
-
 	return ptr - dns->buf;
 }
 
 
+
+int dns_add_query_aaaa(nm_dns_t *dns, char *host, int len)
+{
+	return 0;
+}
+
+
+
 #define INADDR_ANY  0x0
+#define DNS_PORT    0x3500
 
 void dns_connect()
 {
-	SOCKADDR Addr;
+	SOCKADDR Addr = {0};
 
 	LoadWinsock();
 
@@ -600,10 +606,10 @@ void dns_connect()
 
 	// Create an Ipv4 UDP socket
 	int socket = 0;
-	socket = Socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	socket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(~0 == socket)
 	{
-		LogMessageA("WSASocketW failed: 0x%1!x!\n", 0); 
+		LogMessageA("WSASocketW failed: %1!u!\n", WSAGetLastError()); 
 		return ;
 	}
 
@@ -611,7 +617,7 @@ void dns_connect()
 	LogMessageA("SockAddr_In6: %1!u!\n", sizeof(SOCKADDR));
 
 
-	unsigned long isblocking = 1;
+	unsigned long isblocking = 0;
 	error = IoctlSocket(socket, FIONBIO, &isblocking);
 	if(error)
 	{
@@ -630,30 +636,30 @@ void dns_connect()
 	dns.qdcount = 0;
 	
 	Addr.Family = AF_INET;
-	Addr.Port = 53;
+	Addr.Port = DNS_PORT;
 	Addr.Ipv4 = dns_ipv4[0];
 
-	/*
-	error = Connect(socket, &Addr, sizeof(SOCKADDR));
+	LogMessageA("Connecting...\n");
+
+	error = Connect(socket, &Addr, sizeof(Addr));
 	if(error)
 	{
-		LogMessageA("WSAConnect failed: %1!u!\n", error);	
+		LogMessageA("WSAConnect failed: %1!u!\n", WSAGetLastError());	
 		return;
 	}
-	*/
 
 	len = dns_add_query_a(&dns, 0, 0);
-	LogMessageA("Length: %1!u!\n", len);
-
 
 	
-	len = SendTo(socket, buf, len, 0, &Addr, sizeof(Addr));
+	len = Send(socket, dns.buf, len, 0);
+	//len = SendTo(socket, dns.buf, len, 0, 0, 0); //&Addr, sizeof(Addr));
 	if(len == -1)
 	{
 		LogMessageA("SendTo failed: %1!u!\n", WSAGetLastError());
 		return;	
 	}
 
+	LogMessageA("Data Sent: %1!u!\n", len);
 
 	LogMessageA("Receiving...\n");
 
@@ -670,14 +676,19 @@ void dns_connect()
 	*/
 
 
-	len = RecvFrom(socket, buf, 512, 0, 0, 0);
+	int fromlen = sizeof(Addr);
+	len = Recv(socket, dns.buf, 512, 0);
+	//len = RecvFrom(socket, dns.buf, 512, 0, &Addr, &fromlen);
 	if(len == -1)
 	{
 		LogMessageA("RecvFrom failed: %1!u!\n", WSAGetLastError());	
 		//return;
 	}
 
+	LogMessageA("RecvFrom len: %1!u! | %1!u!\n", len);
+
 	
+	/*
 	LARGE_INTEGER li = {0, -1000};
 	//NtDelayExecution(0, &li);
 
@@ -688,9 +699,10 @@ void dns_connect()
 		LogMessageA("NtWaitForSingleObject failed: 0x%1!x!\n", status);
 		return;	
 	}
+	*/
 
 
-	LogMessageA("buf: %1!.*s!\n", len, buf);
+	LogMessageA("buf: %1!.*s!\n", 28, buf);
 
 
 
