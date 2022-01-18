@@ -140,13 +140,6 @@ typedef struct _WSAPROTOCOLCHAIN {
 } WSAPROTOCOLCHAIN;
 
 
-typedef struct _GUID {
-	unsigned long Data1;
-	unsigned short Data2;
-	unsigned short Data3;
-	unsigned char Data4[8];
-} GUID;
-
 
 
 typedef struct _WSAPROTOCOL_INFOW {
@@ -531,8 +524,10 @@ void dns_add_qname(nm_dns_t *dns, char *host, int len)
 		if(host[i] != '.') continue;
 		_len = &host[i] - tmp;
 
-		tmp[0] = _len;
-		//nm_memcpy(&tmp[1], 
+		ptr[0] = _len;
+		nm_memcpy(ptr+1, &tmp[1], len);
+		ptr += len+1;
+		tmp += len;
 	}
 }
 
@@ -613,9 +608,6 @@ void dns_connect()
 		return ;
 	}
 
-	
-	LogMessageA("SockAddr_In6: %1!u!\n", sizeof(SOCKADDR));
-
 
 	unsigned long isblocking = 0;
 	error = IoctlSocket(socket, FIONBIO, &isblocking);
@@ -677,15 +669,15 @@ void dns_connect()
 
 
 	int fromlen = sizeof(Addr);
-	len = Recv(socket, dns.buf, 512, 0);
-	//len = RecvFrom(socket, dns.buf, 512, 0, &Addr, &fromlen);
+	//len = Recv(socket, dns.buf, 512, 0);
+	len = RecvFrom(socket, dns.buf, 512, 0, &Addr, &fromlen);
 	if(len == -1)
 	{
 		LogMessageA("RecvFrom failed: %1!u!\n", WSAGetLastError());	
-		//return;
+		return;
 	}
 
-	LogMessageA("RecvFrom len: %1!u! | %1!u!\n", len);
+	LogMessageA("RecvFrom len: %1!u! | %2!u!\n", len, fromlen);
 
 	
 	/*
@@ -701,16 +693,11 @@ void dns_connect()
 	}
 	*/
 
-
 	LogMessageA("buf: %1!.*s!\n", 28, buf);
-
-
 
 	//shutdown(socket, 0x1); // shutdown send operations operations
 	
 	return ;
-
-
 }
 
 
