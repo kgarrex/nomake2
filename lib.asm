@@ -18,6 +18,7 @@ pe_file_header ends
 
 
 .model flat, stdcall
+.xmm
 
 
 .code
@@ -37,10 +38,33 @@ testProc proc public n1:dword
 testProc endp
 
 
+
+bswap16 proc public n:dword
+	mov eax, [esp+8]
+	shl eax, 16
+	bswap eax
+	ret 4
+bswap16 endp
+
+
+bswap32 proc public n:dword
+	mov eax, [esp+8]
+	;shl eax, 16
+	ret 4
+bswap32 endp
+
+
+
+;dns_add_name proc public
+
+
+
 memcpy proc public dest:ptr byte, src:ptr byte, count:dword
 
 	
-;	movdqa
+	;movdqa
+	ret
 memcpy endp
+
 
 end

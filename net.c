@@ -269,45 +269,45 @@ int (__stdcall *WSAConnect)(
 int (__stdcall *WSAGetLastError)();
 
 
-int (__stdcall *Connect)(int socket, SOCKADDR *address, int len);
+int (__stdcall *connect)(int socket, SOCKADDR *address, int len);
 
 
 /**
  * Sends data on a connected socket
  */
-int (__stdcall *Send)(int socket, char *buf, int len, int flags);
+int (__stdcall *send)(int socket, char *buf, int len, int flags);
 
 
 /**
  * Creates a socket that is bound to a specific transport service provider
  */
-int (__stdcall *Socket)(int family, int type, int protocol);
+int (__stdcall *socket)(int family, int type, int protocol);
 
 
 
 /**
  * Sends a single data message to a specific destination
  */
-int (__stdcall *SendTo)(int socket, char *buf,
+int (__stdcall *sendto)(int socket, char *buf,
 	int len, int flags, SOCKADDR *to, int tolen);
 
 
 /**
  * Places a socket in a state that it can listen for incoming connections
  */
-int (__stdcall *Listen)(int socket, int backlog);
+int (__stdcall *listen)(int socket, int backlog);
 
 
-int (__stdcall *Recv)(int socket, char *buf, int len, int flags);
+int (__stdcall *recv)(int socket, char *buf, int len, int flags);
 
 
-int (__stdcall *Bind)(int socket, SOCKADDR *address, int len);
+int (__stdcall *bind)(int socket, SOCKADDR *address, int len);
 
 
 /**
  * Receives a datagram and store the source address
  */
-int (__stdcall *RecvFrom)(int socket, char *buf,
+int (__stdcall *recvfrom)(int socket, char *buf,
 	int len, int flags, SOCKADDR *from, int *fromlen);
 
 
@@ -326,7 +326,7 @@ int (__stdcall *WSAIoctl)(int socket,
 	OVERLAPPED_COMPLETION_ROUTINE CompletionRoutine);
 
 
-int (__stdcall *IoctlSocket)(
+int (__stdcall *ioctlsocket)(
 	int socket,
 	long cmd,
 	unsigned long *argp);
@@ -392,41 +392,41 @@ void __stdcall LoadWinsock()
 
 	ProcName.length = 7;
 	ProcName.buffer= "connect";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Connect);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &connect);
 
 	ProcName.length = 4;
 	ProcName.buffer = "send";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Send);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &send);
 
 	ProcName.buffer = "recv";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Recv);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &recv);
 
 	ProcName.buffer = "bind";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Bind);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &bind);
 
 	ProcName.length = 6;
 	ProcName.buffer = "sendto";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &SendTo);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &sendto);
 
 	ProcName.buffer = "listen";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Listen);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &listen);
 
 	ProcName.buffer = "socket";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &Socket);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &socket);
 
 	ProcName.length = 8;
 	ProcName.buffer = "shutdown";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &shutdown);
 
 	ProcName.buffer = "recvfrom";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &RecvFrom);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &recvfrom);
 
 	ProcName.buffer = "WSAIoctl";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSAIoctl);
 
 	ProcName.length = 11;
 	ProcName.buffer = "ioctlsocket";
-	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &IoctlSocket);
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &ioctlsocket);
 }
 
 
@@ -514,6 +514,18 @@ typedef struct nm_dns
 } nm_dns_t;
 
 
+
+uint16_t __stdcall bswap16(uint16_t n16);
+
+
+uint32_t __stdcall bswap32(uint32_t n32);
+
+
+uint64_t __stdcall bswap64(uint64_t n64);
+
+
+
+
 void dns_add_qname(nm_dns_t *dns, char *host, int len)
 {
 	char *ptr = dns->buf, *tmp = host;
@@ -522,12 +534,11 @@ void dns_add_qname(nm_dns_t *dns, char *host, int len)
 	for(int i = 0; i < len; ++i)
 	{
 		if(host[i] != '.') continue;
-		_len = &host[i] - tmp;
+		*ptr = &host[i] - tmp;
 
-		ptr[0] = _len;
-		nm_memcpy(ptr+1, &tmp[1], len);
-		ptr += len+1;
-		tmp += len;
+		nm_memcpy(ptr+1, tmp, *ptr);
+		ptr += *ptr+1;
+		tmp = &host[i+1];
 	}
 }
 
@@ -536,29 +547,43 @@ int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 {
 	char *ptr = dns->buf;
 	
-	*((uint16_t*)ptr) =  1337;
+	//*((uint32_t*)ptr) = (id << 16) | 0x0100;
+	//ptr += 4;
+	*((uint16_t*)ptr) = 1337;
 	ptr += 2;
-
 
 	*((uint16_t*)ptr) = 0x0100; // set flags
 	ptr += 2;
 
-	*((uint16_t*)ptr) = 0x0100; //++dns->qdcount;
+
+
+	//*((uint32_t*)ptr) = bswap16(++dns->qdcount) << 16;
+	//ptr += 4;
+	*((uint16_t*)ptr) = bswap16(++dns->qdcount);
 	ptr += 2;
 
 	*((uint16_t*)ptr) = 0;  // ancount
 	ptr += 2;
 
+
+	//*((uint32_t*)ptr) = 0x0;
+	//ptr += 4;
 	*((uint16_t*)ptr) = 0;  // nscount
 	ptr += 2;
 	
 	*((uint16_t*)ptr) = 0;  // arcount
 	ptr += 2;
+
+
 	
 	// Set the QNAME
 	nm_memcpy(ptr, "\x6google" "\x3" "com\x0", 12);
 	ptr += 12;
 
+
+
+	//*((uint32_t*)ptr) = (qtype << 16) | 0x0100;
+	// ptr += 4;
 	// Set the QTYPE
 	*((uint16_t*)ptr) = 0x0100; //QTYPE_A;
 	ptr += 2;
@@ -566,6 +591,8 @@ int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 	// Set the QCLASS for IN address
 	*((uint16_t*)ptr) = 0x0100;
 	ptr += 2;
+
+	LogMessageA("QDCOUNT: 0x%1!p!\n", bswap16(dns->qdcount));
 
 
 	return ptr - dns->buf;
@@ -600,9 +627,9 @@ void dns_connect()
 	}
 
 	// Create an Ipv4 UDP socket
-	int socket = 0;
-	socket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(~0 == socket)
+	int s = 0;
+	s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if(~0 == s)
 	{
 		LogMessageA("WSASocketW failed: %1!u!\n", WSAGetLastError()); 
 		return ;
@@ -610,10 +637,10 @@ void dns_connect()
 
 
 	unsigned long isblocking = 0;
-	error = IoctlSocket(socket, FIONBIO, &isblocking);
+	error = ioctlsocket(s, FIONBIO, &isblocking);
 	if(error)
 	{
-		LogMessageA("IoctlSocket failed: 0x%1!x!\n", WSAGetLastError());
+		LogMessageA("ioctlsocket failed: 0x%1!x!\n", WSAGetLastError());
 		return;
 	}
 
@@ -633,7 +660,7 @@ void dns_connect()
 
 	LogMessageA("Connecting...\n");
 
-	error = Connect(socket, &Addr, sizeof(Addr));
+	error = connect(s, &Addr, sizeof(Addr));
 	if(error)
 	{
 		LogMessageA("WSAConnect failed: %1!u!\n", WSAGetLastError());	
@@ -643,7 +670,7 @@ void dns_connect()
 	len = dns_add_query_a(&dns, 0, 0);
 
 	
-	len = Send(socket, dns.buf, len, 0);
+	len = send(s, dns.buf, len, 0);
 	//len = SendTo(socket, dns.buf, len, 0, 0, 0); //&Addr, sizeof(Addr));
 	if(len == -1)
 	{
@@ -654,6 +681,7 @@ void dns_connect()
 	LogMessageA("Data Sent: %1!u!\n", len);
 
 	LogMessageA("Receiving...\n");
+
 
 
 	/*
@@ -670,14 +698,14 @@ void dns_connect()
 
 	int fromlen = sizeof(Addr);
 	//len = Recv(socket, dns.buf, 512, 0);
-	len = RecvFrom(socket, dns.buf, 512, 0, &Addr, &fromlen);
+	len = recvfrom(s, dns.buf, 512, 0, &Addr, &fromlen);
 	if(len == -1)
 	{
 		LogMessageA("RecvFrom failed: %1!u!\n", WSAGetLastError());	
 		return;
 	}
 
-	LogMessageA("RecvFrom len: %1!u! | %2!u!\n", len, fromlen);
+	LogMessageA("recvfrom len: %1!u! | %2!u!\n", len, fromlen);
 
 	
 	/*
