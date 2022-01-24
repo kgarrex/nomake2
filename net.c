@@ -1,4 +1,6 @@
 
+#include "net.h"
+
 void __stdcall nm_network_cards(void *NetworkCardsKeyHandle, UNICODE_STRING *path)
 {
 	unsigned long status;
@@ -108,236 +110,6 @@ void __stdcall nm_network_cards(void *NetworkCardsKeyHandle, UNICODE_STRING *pat
 
 }
 
-#define WSADESCRIPTION_LEN 256
-#define WSASYS_STATUS_LEN 128
-
-typedef struct _WSADATA
-{
-	// The version of the Windows Sockets specification that the WS2_32.dll expects
-	// the caller to use.
-	WORD wVersion;
-
-	WORD wHighVersion;
-	char szDescription[WSADESCRIPTION_LEN+1];
-	char szSystemStatus[WSASYS_STATUS_LEN+1];
-	unsigned short iMaxSockets;
-	unsigned short iMaxUdpDg;
-	char *lpVendorInfo;
-} WSADATA;
-
-
-#define MAX_PROTOCOL_CHAIN 7
-
-typedef struct _WSAPROTOCOLCHAIN {
-/* the length of the chain:
-	length = 0 means layered protocol
-	length = 1 means base protocol
-	length > 1 means protocol chain */
-	int ChainLen;
-
-/* a list of dwCatalogEntryIds */
-	DWORD ChainEntries[MAX_PROTOCOL_CHAIN];
-} WSAPROTOCOLCHAIN;
-
-
-
-
-typedef struct _WSAPROTOCOL_INFOW {
-	DWORD dwServiceFlags1;
-	DWORD dwServiceFlags2;
-	DWORD dwServiceFlags3;
-	DWORD dwServiceFlags4;
-	DWORD dwServiceFlags;
-	GUID ProviderId;
-	DWORD dwCatalogEntryId;
-	WSAPROTOCOLCHAIN ProtocolChain;
-	int iVersion;
-	int iAddressFamily;
-	int iMaxSockAddr;
-	int iMinSockAddr;
-	int iSocketType;
-	int iProtocol;
-	int iProtocolMaxOffset;
-	int iNetworkByteOrder;
-	int iSecurityScheme;
-	DWORD dwMessageSize;
-	DWORD dwProviderReserved;
-	wchar_t szProtocol[255+1];
-} WSAPROTOCOL_INFOW, *LPWSAPROTOCOL_INFOW;
-
-
-
-typedef struct _IN4ADDR {
-	union {
-		struct {
-			unsigned char s_b1;
-			unsigned char s_b2;
-			unsigned char s_b3;
-			unsigned char s_b4;
-		} S_un_b;
-		struct {
-			unsigned short s_w1;
-			unsigned short s_w2;
-		} S_un_w;
-		unsigned long S_addr;
-	} S_un;
-} IN4ADDR;
-
-typedef struct _IN6ADDR {
-	union {
-		unsigned char byte[16];
-		unsigned short word[8];
-		uint32_t dword[4];
-	} u;
-} IN6ADDR;
-
-
-
-typedef struct _SOCKADDR
-{
-	unsigned short Family;
-	unsigned short Port;
-	union {
-		//IN4ADDR Ipv4Address;
-		uint32_t Ipv4; 
-		struct {
-			uint32_t sin6_flowinfo;
-			IN6ADDR Ipv6Address;
-			uint32_t sin6_scope_id;
-		} in6;
-	};
-	char Extra[4];
-} SOCKADDR;
-
-
-
-typedef struct _WSABUF {
-	unsigned long len;
-	char *buf;
-} WSABUF, *LPWSABUF;
-
-
-typedef struct _flowspec {
-	unsigned long TokenRate;
-	unsigned long TokenBucketSize;
-	unsigned long PeakBandwidth;
-	unsigned long Latency;
-	unsigned long DelayVariation;
-	unsigned long ServiceType;
-	unsigned long MaxSduSize;
-	unsigned long MinimumPolicedSize;
-} FLOWSPEC, *PFLOWSPEC;
-
-
-typedef struct _QualityOfService {
-	FLOWSPEC SendingFlowspec;
-	FLOWSPEC ReceivingFlowspec;
-	WSABUF ProviderSpecific;
-} QOS;
-
-
-typedef struct _OVERLAPPED {
-	unsigned long Internal;
-	unsigned long InternalHigh;
-	union {
-		struct {
-			DWORD Offset;
-			DWORD OffsetHigh;
-		} DUMMYSTRUCTNAME;
-		void *Pointer;
-	} DUMMYUNIONNAME;
-	void *hEvent;
-} OVERLAPPED;
-
-
-
-
-
-int (__stdcall *WSAStartup)(WORD wVersionRequested, WSADATA *WSAData);
-
-
-// Creates a socket that is bound to a specific transport-service provider
-int (__stdcall *WSASocketW)(
-	int AddressFamily, int SocketType, int Protocol,
-	WSAPROTOCOL_INFOW *Info, int SocketGroupId, int Flags);
-
-
-int (__stdcall *WSAConnect)(
-	int Socket, const SOCKADDR *SockAddr, int SockAddrLength,
-	WSABUF *CallerData, WSABUF *CalleeData, QOS *Sqos, QOS *Gqos);
-
-int (__stdcall *WSAGetLastError)();
-
-
-int (__stdcall *connect)(int socket, SOCKADDR *address, int len);
-
-
-/**
- * Sends data on a connected socket
- */
-int (__stdcall *send)(int socket, char *buf, int len, int flags);
-
-
-/**
- * Creates a socket that is bound to a specific transport service provider
- */
-int (__stdcall *socket)(int family, int type, int protocol);
-
-
-
-/**
- * Sends a single data message to a specific destination
- */
-int (__stdcall *sendto)(int socket, char *buf,
-	int len, int flags, SOCKADDR *to, int tolen);
-
-
-/**
- * Places a socket in a state that it can listen for incoming connections
- */
-int (__stdcall *listen)(int socket, int backlog);
-
-
-int (__stdcall *recv)(int socket, char *buf, int len, int flags);
-
-
-int (__stdcall *bind)(int socket, SOCKADDR *address, int len);
-
-
-/**
- * Receives a datagram and store the source address
- */
-int (__stdcall *recvfrom)(int socket, char *buf,
-	int len, int flags, SOCKADDR *from, int *fromlen);
-
-
-typedef (__stdcall *OVERLAPPED_COMPLETION_ROUTINE)(
-	DWORD Error, DWORD NumTransferred, OVERLAPPED *Overlapped, DWORD Flags);
-
-
-int (__stdcall *WSAIoctl)(int socket,
-	DWORD IoControlCode,
-	void *InBuffer,
-	DWORD InBufferLen,
-	void *OutBuffer,
-	DWORD OutBufferLen,
-	DWORD *BytesReturned,
-	OVERLAPPED *Overlapped,
-	OVERLAPPED_COMPLETION_ROUTINE CompletionRoutine);
-
-
-int (__stdcall *ioctlsocket)(
-	int socket,
-	long cmd,
-	unsigned long *argp);
-
-
-/**
- * socket: socket descriptor
- * how: A flag describing what types of operation will no longer be allowed
-*/
-int (__stdcall *shutdown)(int socket, int how);
-
 
 void __stdcall LoadWinsock()
 {
@@ -394,6 +166,12 @@ void __stdcall LoadWinsock()
 	ProcName.buffer= "connect";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &connect);
 
+	ProcName.buffer = "WSASend";
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSASend);
+
+	ProcName.buffer = "WSARecv";
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecv);
+
 	ProcName.length = 4;
 	ProcName.buffer = "send";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &send);
@@ -403,6 +181,13 @@ void __stdcall LoadWinsock()
 
 	ProcName.buffer = "bind";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &bind);
+
+	ProcName.length = 9;
+	ProcName.buffer = "WSASendTo";
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSASendTo);
+
+	ProcName.buffer = "WSARecvEx";
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecvEx);
 
 	ProcName.length = 6;
 	ProcName.buffer = "sendto";
@@ -427,6 +212,9 @@ void __stdcall LoadWinsock()
 	ProcName.length = 11;
 	ProcName.buffer = "ioctlsocket";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &ioctlsocket);
+
+	ProcName.buffer = "WSARecvFrom";
+	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecvFrom);
 }
 
 
@@ -485,6 +273,8 @@ uint32_t dns_ipv6[] = {
 #define _IOW(x,y,t)  (IOC_IN|(((long)sizeof(t)&IOCPARAM_MASK)<<16)|((x)<<8)|(y))
 
 
+#define SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER 0xc8000024 // (IOC_INOUT| 0x08000000 | 36)
+
 #define FIONBIO     0x8004667e  // _IOW('f', 125, long)
 #define FIONASYNC   0x8004667d  // _IOW('f', 126, long)
 
@@ -508,9 +298,12 @@ typedef struct nm_dns
 	short qdcount;
 
 
-	// buffer to hold the query/response message
-	char *buf;
-	
+	// buffer to hold the query message
+	WSABUF sendbuf;
+
+	// buffer to hold the response message
+	WSABUF recvbuf;
+
 } nm_dns_t;
 
 
@@ -528,10 +321,11 @@ uint64_t __stdcall bswap64(uint64_t n64);
 
 void dns_add_qname(nm_dns_t *dns, char *host, int len)
 {
-	char *ptr = dns->buf, *tmp = host;
+	char *ptr = dns->sendbuf.buf, *tmp = host;
 	char _len;
+	int i;
 
-	for(int i = 0; i < len; ++i)
+	for(i = 0; i < len; ++i)
 	{
 		if(host[i] != '.') continue;
 		*ptr = &host[i] - tmp;
@@ -540,62 +334,72 @@ void dns_add_qname(nm_dns_t *dns, char *host, int len)
 		ptr += *ptr+1;
 		tmp = &host[i+1];
 	}
+
+	*ptr = 0;
 }
 
 
 int dns_add_query_a(nm_dns_t *dns, char *host, int len)
 {
-	char *ptr = dns->buf;
+	uint16_t id = 1337;
+	char *ptr = dns->sendbuf.buf;
 	
-	//*((uint32_t*)ptr) = (id << 16) | 0x0100;
-	//ptr += 4;
+	*((uint32_t*)ptr) = (id << 16) | 0x0100;
+	ptr += 4;
+	/*
 	*((uint16_t*)ptr) = 1337;
 	ptr += 2;
 
 	*((uint16_t*)ptr) = 0x0100; // set flags
 	ptr += 2;
+	*/
 
 
 
-	//*((uint32_t*)ptr) = bswap16(++dns->qdcount) << 16;
-	//ptr += 4;
+	*((uint32_t*)ptr) = (uint32_t)(bswap16(++dns->qdcount) << 16);
+	ptr += 4;
+	/*
 	*((uint16_t*)ptr) = bswap16(++dns->qdcount);
 	ptr += 2;
 
 	*((uint16_t*)ptr) = 0;  // ancount
 	ptr += 2;
+	*/
 
 
-	//*((uint32_t*)ptr) = 0x0;
-	//ptr += 4;
+	*((uint32_t*)ptr) = 0x0;
+	ptr += 4;
+	/*
 	*((uint16_t*)ptr) = 0;  // nscount
 	ptr += 2;
 	
 	*((uint16_t*)ptr) = 0;  // arcount
 	ptr += 2;
-
+	*/
 
 	
 	// Set the QNAME
-	nm_memcpy(ptr, "\x6google" "\x3" "com\x0", 12);
+	nm_memcpy(ptr, "\x6""google""\x3""com""\x0", 12);
 	ptr += 12;
 
 
-
-	//*((uint32_t*)ptr) = (qtype << 16) | 0x0100;
-	// ptr += 4;
+	*((uint32_t*)ptr) = (0x0100 << 16) | 0x0100;
+	 ptr += 4;
 	// Set the QTYPE
+	/*
 	*((uint16_t*)ptr) = 0x0100; //QTYPE_A;
 	ptr += 2;
 
 	// Set the QCLASS for IN address
 	*((uint16_t*)ptr) = 0x0100;
 	ptr += 2;
+	*/
 
-	LogMessageA("QDCOUNT: 0x%1!p!\n", bswap16(dns->qdcount));
+	//LogMessageA("QDCOUNT: 0x%1!p!\n", bswap16(dns->qdcount));
+	//LogMessageA("QDCOUNT: 0x%1!p!\n", bswap16(0x0402));
 
 
-	return ptr - dns->buf;
+	return ptr - dns->sendbuf.buf;
 }
 
 
@@ -606,11 +410,58 @@ int dns_add_query_aaaa(nm_dns_t *dns, char *host, int len)
 }
 
 
+int dns_add_query_cname(nm_dns_t *dns, char *host, int len)
+{
+	return 0;
+}
+
+
+int dns_add_query_mx(nm_dns_t *dns, char *host, int len)
+{
+	return 0;
+}
+
+
+void __stdcall SendCompletionRoutine(
+	DWORD Error,
+	DWORD NumTransferred,
+	OVERLAPPED *Overlapped,	
+	DWORD Flags)
+{
+
+	LogMessageA("SendCompletionRoutine: %1!u!\n", NumTransferred);
+}
+
+
+void LoadExtensions(int Socket)
+{
+
+	/*
+	WSAIoctl(
+		Socket,
+	*/
+		
+
+	/*
+	WSAIoctl(
+		Socket,
+		SIO_GET_MULTIPLE_EXTENSION_FUNCTION_POINTER,
+		0,
+		sizeof(GUID),
+		RIOTable,
+		sizeof(RIOTable),
+		0, 0, 0);
+	*/
+		
+
+}
+
+
 
 #define INADDR_ANY  0x0
 #define DNS_PORT    0x3500
 
-void dns_connect()
+void dns_connect(nm_dns_t *dns)
 {
 	SOCKADDR Addr = {0};
 
@@ -628,14 +479,17 @@ void dns_connect()
 
 	// Create an Ipv4 UDP socket
 	int s = 0;
-	s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	s = WSASocketW(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, 0, 0);
 	if(~0 == s)
 	{
 		LogMessageA("WSASocketW failed: %1!u!\n", WSAGetLastError()); 
 		return ;
 	}
 
+	LogMessageA("Socket: 0x%1!p!\n", s);
 
+
+	/*
 	unsigned long isblocking = 0;
 	error = ioctlsocket(s, FIONBIO, &isblocking);
 	if(error)
@@ -643,45 +497,48 @@ void dns_connect()
 		LogMessageA("ioctlsocket failed: 0x%1!x!\n", WSAGetLastError());
 		return;
 	}
+	*/
 
 
-	char buf[512];
+
+
 	int len;
 	int fromLen;
 
-	nm_dns_t dns;
 
-	dns.buf = buf;
-	dns.qdcount = 0;
-	
 	Addr.Family = AF_INET;
 	Addr.Port = DNS_PORT;
 	Addr.Ipv4 = dns_ipv4[0];
 
-	LogMessageA("Connecting...\n");
 
-	error = connect(s, &Addr, sizeof(Addr));
+	/*
+	LogMessageA("Connecting...\n");
+	error = WSAConnect(s, &Addr, sizeof(Addr), 0, 0, 0, 0);
 	if(error)
 	{
 		LogMessageA("WSAConnect failed: %1!u!\n", WSAGetLastError());	
 		return;
 	}
+	*/
 
-	len = dns_add_query_a(&dns, 0, 0);
+	len = dns_add_query_a(dns, 0, 0);
+
 
 	
-	len = send(s, dns.buf, len, 0);
-	//len = SendTo(socket, dns.buf, len, 0, 0, 0); //&Addr, sizeof(Addr));
+	DWORD numBytes = len;
+	int fromlen = sizeof(Addr);
+	DWORD flags = 0; // MSG_PARTIAL if query count is greater than 1
+	//len = WSASend(s, &dns->sendbuf, 1, &numBytes, flags, 0, 0);
+	len = WSASendTo(s, &dns->sendbuf, 1, &numBytes, flags, &Addr, fromlen, 0, SendCompletionRoutine);
 	if(len == -1)
 	{
-		LogMessageA("SendTo failed: %1!u!\n", WSAGetLastError());
+		LogMessageA("WSASendTo failed: %1!u!\n", WSAGetLastError());
 		return;	
 	}
 
-	LogMessageA("Data Sent: %1!u!\n", len);
+	LogMessageA("Data Sent: %1!u!\n", numBytes);
 
 	LogMessageA("Receiving...\n");
-
 
 
 	/*
@@ -696,9 +553,8 @@ void dns_connect()
 	*/
 
 
-	int fromlen = sizeof(Addr);
-	//len = Recv(socket, dns.buf, 512, 0);
-	len = recvfrom(s, dns.buf, 512, 0, &Addr, &fromlen);
+	//len = WSARecv(s, &dns->recvbuf, 1, &numBytes, &flags, 0, 0);
+	len = WSARecvFrom(s, &dns->recvbuf, 1, &numBytes, &flags, &Addr, &fromlen, 0, 0);
 	if(len == -1)
 	{
 		LogMessageA("RecvFrom failed: %1!u!\n", WSAGetLastError());	
@@ -708,7 +564,6 @@ void dns_connect()
 	LogMessageA("recvfrom len: %1!u! | %2!u!\n", len, fromlen);
 
 	
-	/*
 	LARGE_INTEGER li = {0, -1000};
 	//NtDelayExecution(0, &li);
 
@@ -719,9 +574,9 @@ void dns_connect()
 		LogMessageA("NtWaitForSingleObject failed: 0x%1!x!\n", status);
 		return;	
 	}
-	*/
 
-	LogMessageA("buf: %1!.*s!\n", 28, buf);
+
+	LogMessageA("buf: %1!.*s!\n", 28, dns->recvbuf.buf);
 
 	//shutdown(socket, 0x1); // shutdown send operations operations
 	
@@ -790,7 +645,21 @@ void  * nm_net_init(void *obj)
 		return 0;
 	}
 
-	dns_connect();
+
+	char buf[512];
+	nm_dns_t dns;
+
+
+	dns.sendbuf.buf = buf;
+	dns.sendbuf.len = 512;
+	dns.qdcount = 0;
+
+
+	dns.recvbuf.buf = buf;
+	dns.recvbuf.len = 512;
+
+
+	dns_connect(&dns);
 
 	
 	return 0;

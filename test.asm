@@ -1,10 +1,10 @@
 
 
-ifndef X64
+;ifndef X64
 
-.model flat, stdcall 
-.XMM
-.686p
+;.model flat, stdcall 
+;.XMM
+;.686p
 
 SYSCALL_NTCLOSE                    equ 001H
 SYSCALL_NTTERMINATETHREAD          equ 002H
@@ -51,62 +51,65 @@ SYSCALL_NTFREEVIRTUALMEMORY        equ 00DH
 
 
 
-.data
+[section .data]
 
-comment ~
-SystemCallTable DW \
-\
-\	; Windows Server 2008
-\
-\	; Windows 7
-\
-\	; Windows 8
-\
-\	; Windows 10
-	018EH, 0023H,
-~
-
-.code
+; SystemCallTable DW \
+;
+;	; Windows Server 2008
+;
+;	; Windows 7
+;
+;	; Windows 8
+;
+;	; Windows 10
+;	018EH, 0023H,
 
 
 
-IFNDEF  _WIN64
+[section .text]
 
-voidptr_t typedef dword
-regsize_t typedef dword
-size_t    typedef dword
 
-NtSystemCall equ sysenter
+%ifidn __?OUTPUT_FORMAT?__, win32
 
-ELSE
+;voidptr_t typedef dword
+;regsize_t typedef dword
+;size_t    typedef dword
+
+%define NtSystemCall sysenter
+;NtSystemCall equ sysenter
+
+%elifidn __?OUTPUT_FORMAT?__, win64
 
 voidptr_t typedef qword
 regsize_t typedef qword
 size_t    typedef qword
 
-NtSystemCall equ syscall
+%define NySystemCall syscall
+;NtSystemCall equ syscall
 
-ENDIF
-
-
-
+%endif
 
 
-comment ~
- Returns: Pointer to the current thread's TEB
-~
-IFNDEF _WIN64
-ASSUME fs:nothing
-NtCurrentTeb proc public
-	mov eax, dword ptr fs:[18h]
-	ret
-NtCurrentTeb endp
-ELSE
-NtCurrentTeb proc public
-	mov rax, qword ptr gs:[30h]
-	ret
-NtCurrentTeb endp
-ENDIF
+
+global NtCurrentTeb@0
+
+; Returns: Pointer to the current thread's TEB
+
+%ifidn __?OUTPUT_FORMAT?__, win32
+
+NtCurrentTeb@0 :
+	mov eax, dword [fs:0x18]
+	add esp, 4
+	jmp [esp-4]
+
+%elifidn __?OUTPUT_FORMAT?__, win64
+
+_NtCurrentTeb@0 :
+	mov rax, qword [gs:0x30]
+	add esp, 8
+	jmp [esp-8]
+
+%endif
 
 
 ; NtAccessCheck
@@ -164,250 +167,182 @@ ENDIF
 
 
 
-comment ~ ******************************************
 
-NTSTATUS __stdcall NtClose(HANDLE);
-
-	Windows 7:
-	SP0: 50
-	SP1: 50
-
-	Windows 8:
-	8.0: 372
-	8.1: 377
-
-	Windows10:
-	1507: 384
-	1511: 387
-	1607: 389
-	1703: 394
-	1709: 397
-	1803: 397
-	1809: 397
-	1903: 397
-	1909: 397
-	2004: 398  0x18e
-	20H2: 398  0x18e
-
-************************************************** ~
-
-NtClose PROC PUBLIC
-
-	
-	mov eax, 018EH
+; *****************************************************
+;NTSTATUS __stdcall NtClose(HANDLE);
+;
+;	Windows 7:
+;	SP0: 50
+;	SP1: 50
+;
+;	Windows 8:
+;	8.0: 372
+;	8.1: 377
+;
+;	Windows10:
+;	1507: 384
+;	1511: 387
+;	1607: 389
+;	1703: 394
+;	1709: 397
+;	1803: 397
+;	1809: 397
+;	1903: 397
+;	1909: 397
+;	2004: 398  0x18e
+;	20H2: 398  0x18e
+; Handle [esp+4]
+; *****************************************************
+_NtClose@4 :
+	mov eax, 0x18
+	mov edx, esp
 	NtSystemCall
 	ret
 
-NtClose ENDP
 
 
 
 
-
-
-comment ~ ******************************************
-
-Sets the resolution of the system timer in the process context
-
-NTSTATUS __stdcall NtSetTimerResolution(
-	IN  ULONG   DesiredResolution,
-	IN  BOOLEAN SetResolution,
-	OUT PULONG  CurrentResolution);
-
-	Windows10: 53 (0x35)
-
-************************************************** ~
-
-NtSetTimerResolution PROC PUBLIC
-
-	mov eax, 035h
+; *****************************************************
+; Sets the resolution of the system timer in the process context
+;
+; NTSTATUS __stdcall NtSetTimerResolution(
+;	IN  ULONG   DesiredResolution,
+;	IN  BOOLEAN SetResolution,
+;	OUT PULONG  CurrentResolution);
+;
+;	Windows10: 53 (0x35)
+;
+; *****************************************************
+_NtSetTimerResolution@0 :
+	mov eax, 0x35 
+	mov edx, esp
 	NtSystemCall
 	ret
 
-NtSetTimerResolution ENDP
 
 
 
+; *****************************************************
+;NTSTATUS __stdcall NtSetTimerEx(
+;	HANDLE TimerHandle,
+;	TIMER_SET_INFORMATION_CLASS TimerSetInfoClass,
+;	void *TimerSetInfo,
+;	unsigned long TimerSetInfoClass);
+;
+;	Windows10: 54 (0x36)
+; *****************************************************
 
-
-comment ~ ********************************************
-
-NTSTATUS __stdcall NtSetTimerEx(
-	HANDLE TimerHandle,
-	TIMER_SET_INFORMATION_CLASS TimerSetInfoClass,
-	void *TimerSetInfo,
-	unsigned long TimerSetInfoClass);
-
-	Windows10: 54 (0x36)
-
-**************************************************** ~
-
-NtSetTimerEx PROC PUBLIC
-
-	mov eax, 036h
+_NtSetTimerEx@0 :
+	mov eax, 0x36
+	mov edx, esp
 	NtSystemCall
 	ret
 
-NtSetTimerEx ENDP
 
 
 
+; *****************************************************
+;NTSTATUS __stdcall NtCreateIoCompletion(
+;	void **IoCompletionHandle,
+;	ACCESS_MASK DesiredAccess,
+;	OBJECT_ATTRIBUTES *ObjectAttributes,
+;	unsigned long Count);
+;
+; IoCompletionHandle = [esp+4]
+; DesiredAccess      = [esp+8]
+; ObjectAttributes   = [esp+12]
+; Count              = [esp+16]
+; *****************************************************
 
-
-
-comment ~ *************************************
-
-NTSTATUS __stdcall NtCreateIoCompletion(
-	void **IoCompletionHandle,
-	ACCESS_MASK DesiredAccess,
-	OBJECT_ATTRIBUTES *ObjectAttributes,
-	unsigned long Count);
-
-********************************************* ~
-IFNDEF _WIN64
-NtCreateIoCompletion2 proc public\
-	IoCompletionHandle :voidptr_t,
-	DesiredAccess      :size_t,
-	ObjectAttributes   :voidptr_t,
-	Count              :size_t
-
-	push dword ptr [esp+16]
-	push dword ptr [esp+12]
-	push dword ptr [esp+8]
-	push dword ptr [esp+4]
-	mov eax, SYSCALL_NTCREATEIOCOMPLETION
+_NtCreateIoCompletion2@16 :
+;	mov eax, SYSCALL_NTCREATEIOCOMPLETION
+	mov edx, esp
 	NtSystemCall
 	add esp, 16
 	ret
-NtCreateIoCompletion2 endp
-ELSE
-NtCreateIoCompletion2 proc public\
-	IoCompletionHandle :voidptr_t,
-	DesiredAccess      :size_t,
-	ObjectAttributs    :voidptr_t,
-	Count              :size_t
-
-	push dword ptr [esp+32]
-	push dword ptr [esp+24]
-	push dword ptr [esp+16]
-	push dword ptr [esp+8]
-	mov eax, SYSCALL_NTCREATEIOCOMPLETION
-	NtSystemCall
-	add esp, 32
-	ret
-NtCreateIoCompletion2 endp 
-ENDIF
 
 
 
 
-comment ~ *****************************************
+; ***************************************************
+;
+; Causes a process to terminate and all child threads
+;
+; unsigned long __stdcall NtTerminateProcess(
+;	void *ProcessHandle, 
+;	unsigned long ExitStatus);
+;
+;	Windows Server 2008 : 334
+;	Windows7            : 370
+;	Windows8            : 35
+;	Windows10           : 36
+;
+; ProcessHandle  [esp+4]
+; ExitStatus     [esp+8]
+;
+; *************************************************
 
-Causes a process to terminate and all child threads
-
-unsigned long __stdcall NtTerminateProcess(
-	void *ProcessHandle, 
-	unsigned long ExitStatus);
-
-	Windows Server 2008 : 334
-	Windows7            : 370
-	Windows8            : 35
-	Windows10           : 36
-
-************************************************* ~
-
-NtTerminateProcess proc public\
-	ProcessHandle  :voidptr_t,
-	ExitStatus     :size_t
-
-	mov eax, 024h
-	NtSystemCall
-	ret
-NtTerminateProcess endp
-
-
-
-
-
-
-
-comment ~ ****************************************************************
-
-Causes a thread to terminate
-
-NTSTATUS __stdcall NtTerminateThread(
-	HANDLE ThreadHandle,
-	NTSTATUS ExitStatus);
-
-	Windows Server 2008: 335
-	Windows7:  371
-	Windows8:  34
-	Windows10: 35
-
-************************************************************************ ~
-
-NtTerminateThread PROC PUBLIC\
-	ThreadHandle   :voidptr_t,
-	ExitStatus     :size_t
-
-	mov eax, 023h
+_NtTerminateProcess@8 :
+	mov eax, 0x24 
+	mov edx, esp
 	NtSystemCall
 	ret
 
-NtTerminateThread ENDP
 
 
 
 
-COMMENT ~ ******************************************************************
-Retrieves information about the specified process.
-PTR ProcessHandle:
-	A handle to the process for which information is to be retrieved.
-DWORD ProcessInformationClass:
-	The type of processinformation to be retrieved.
-PTR ProcessInformation:
-	Buffer to receive information, The data struct supplied
-	here depends on the ProcessInformationClass parameter
-DWORD ProcessInformationLength:
-	Size of the buffer pointed to by ProcessInformation
-DWORD PTR ReturnLength:
-	Pointer to value to receives the size of the requested information.
-	This value should match the ProcessInformationLenth...maybe?
-RETURN: NtStatus
-************************************************************************** ~
+; ****************************************************************
+;
+; Causes a thread to terminate
+;
+;
+; NTSTATUS __stdcall NtTerminateThread(
+;	HANDLE ThreadHandle,
+;	NTSTATUS ExitStatus);
+;
+;	Windows Server 2008: 335
+;	Windows7:  371
+;	Windows8:  34
+;	Windows10: 35
+;
+; ThreadHandle [esp+4]
+; ExitStatus   [esp+8]
+;
+; ***************************************************************
 
-NtQueryInformationProcess2 PROC PUBLIC\
-	ProcessHandle            :DWORD,
-	ProcessInformationClass  :DWORD,
-	ProcessInformation       :DWORD,
-	ProcessInformationLength :DWORD,
-	ReturnLength             :DWORD
+_NtTerminateThread@8 :
 
-	push ebp
-	mov ebp, esp
-
-	mov eax, 0b0h
+	mov eax, 0x23
+	mov edx, esp
 	NtSystemCall
-
-	pop ebp
-	retn
-
-NtQueryInformationProcess2 ENDP 
+	ret
 
 
 
 
+; ****************************************************************
+;Retrieves information about the specified process.
+;PTR ProcessHandle: [esp+4]
+;	A handle to the process for which information is to be retrieved.
+;DWORD ProcessInformationClass: [esp+8]
+;	The type of processinformation to be retrieved.
+;PTR ProcessInformation: [esp+12]
+;	Buffer to receive information, The data struct supplied
+;	here depends on the ProcessInformationClass parameter
+;DWORD ProcessInformationLength: [esp+16]
+;	Size of the buffer pointed to by ProcessInformation
+;DWORD PTR ReturnLength: [esp+20]
+;	Pointer to value to receives the size of the requested information.
+;	This value should match the ProcessInformationLenth...maybe?
+;RETURN: NtStatus
+; ****************************************************************
 
 
-ASSUME fs:error
+_NtQueryInformationProcess2@20 :
+	mov eax, 0xb0
+	mov edx, esp
+	NtSystemCall
+	ret
 
-
-
-;ELSE ;Code for .64
-;.code
-
-
-ENDIF
-
-
-end
