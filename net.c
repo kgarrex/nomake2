@@ -571,7 +571,7 @@ void dns_connect(nm_dns_t *dns)
 	status = NtWaitForSingleObject(socket, true, 0);
 	if(status > 0)
 	{
-		LogMessageA("NtWaitForSingleObject failed: 0x%1!x!\n", status);
+		LogMessageA("NtWaitForSingleObject(dns_connect) failed: 0x%1!x!\n", status);
 		return;	
 	}
 

@@ -124,6 +124,7 @@ void __stdcall openSystem(struct WinSystem *System)
 	getSyscallTable();
 
 
+	/*
 	LogMessageW(L"Diff: %1!u!\n", 0x714 - 0x700);
 	LogMessageW(L"Diff: %1!u!\n", 0x890 - 0x878);
 	LogMessageW(L"Sizeof(UNICODE_STRING): 0x%1!u!\n", sizeof(UNICODE_STRING));
@@ -144,6 +145,8 @@ void __stdcall openSystem(struct WinSystem *System)
 	LogMessageW(L"OFFSET UserReserved: 0x%1!x!\n", offsetof(TEB, UserReserved));
 	LogMessageW(L"OFFSET DeallocationStack: 0x%1!x!\n", offsetof(TEB, DeallocationStack));
 	LogMessageW(L"OFFSET FlsSlots: 0x%1!x!\n", offsetof(TEB, FlsSlots));
+	*/
+
 
 
 	ACCESS_MASK access;

@@ -311,9 +311,7 @@ _NtTerminateProcess@8 :
 ; ExitStatus   [esp+8]
 ;
 ; ***************************************************************
-
 _NtTerminateThread@8 :
-
 	mov eax, 0x23
 	mov edx, esp
 	NtSystemCall
