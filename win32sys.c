@@ -175,14 +175,14 @@ void __stdcall openSystem(struct WinSystem *System)
 
 	RTL_USER_PROCESS_PARAMETERS *upp = peb->ProcessParameters;
 
-	LogMessageW(L"CurrentDirectoryLength: %1!u!\n", upp->CurrentDirectoryPath.length);
-	LogMessageW(L"CurrentDirectory: %1!s!\n", upp->CurrentDirectoryPath.buffer);
+	LogMessageW(L"CurrentDirectoryLength: %1!u!\n", upp->CurrentDirectoryPath.Length);
+	LogMessageW(L"CurrentDirectory: %1!s!\n", upp->CurrentDirectoryPath.Buffer);
 
-	LogMessageW(L"ImageFileNameLength: %1!u!\n", upp->ImagePathName.length);
-	LogMessageW(L"ImageFileName: %1!s!\n", upp->ImagePathName.buffer);
+	LogMessageW(L"ImageFileNameLength: %1!u!\n", upp->ImagePathName.Length);
+	LogMessageW(L"ImageFileName: %1!s!\n", upp->ImagePathName.Buffer);
 
-	LogMessageW(L"CommandLineLength: %1!u!\n", upp->CommandLine.length);
-	LogMessageW(L"CommandLine: %1!s!\n", upp->CommandLine.buffer);
+	LogMessageW(L"CommandLineLength: %1!u!\n", upp->CommandLine.Length);
+	LogMessageW(L"CommandLine: %1!s!\n", upp->CommandLine.Buffer);
 
 	LogMessageW(L"EnvironmentSize: %1!u!\n", upp->EnvironmentSize);
 	LogMessageW(L"Environment: %1!.*s!\n", upp->EnvironmentSize, upp->Environment);

@@ -416,7 +416,6 @@ unsigned long __stdcall NtCreateThreadEx(
 
 
 
-#define CREATE_SUSPENDED  0x0004
 #define STACK_SIZE_PARAM_IS_A_RESERVATION  0x00010000
 
 

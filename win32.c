@@ -335,9 +335,9 @@ int __stdcall openDir(struct WinSystem *System, struct WinDir * Dir)
 	unsigned short wchar_length;
 
 	wchar_length = str8to16(pathbuf, Dir->path, Dir->pathLength);
-	str.length = wchar_length;
-	str.maximum_length = 256 << 1;
-	str.buffer = pathbuf;
+	str.Length = wchar_length;
+	str.MaximumLength = 256 << 1;
+	str.Buffer = pathbuf;
 	objectAttributes.ObjectName = &str;
 	
 	Dir->Object.Access.mask = SYNCHRONIZE | FILE_LIST_DIRECTORY;
@@ -388,9 +388,9 @@ void * __stdcall win32CreateFile(void *dirHandle, char *path, uint32_t length)
 	unsigned short wchar_length;
 
 	wchar_length = str8to16(pathbuf, path, length);
-	str.length = wchar_length;
-	str.maximum_length = 256;
-	str.buffer = pathbuf;
+	str.Length = wchar_length;
+	str.MaximumLength = 256;
+	str.Buffer = pathbuf;
 	objectAttributes.ObjectName = &str;
 	
 	access.mask = 0;
@@ -433,9 +433,9 @@ void * __stdcall win32OpenFile(void *dirHandle, char *path, uint32_t length)
 
 	wchar_length = str8to16(pathbuf, path, length);
 
-	str.length = wchar_length;
-	str.maximum_length = 256;
-	str.buffer = pathbuf;
+	str.Length = wchar_length;
+	str.MaximumLength = 256;
+	str.Buffer = pathbuf;
 	objectAttributes.ObjectName = &str;
 	
 	access.mask = FILE_READ_DATA;

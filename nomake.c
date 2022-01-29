@@ -291,9 +291,9 @@ nm_app_t * __stdcall nm_init()
 	ANSI_STRING procName;
 
 
-	dllName.length = 18;
-	dllName.maximum_length = 18; 
-	dllName.buffer = L"ntdll.dll"; 
+	dllName.Length = 18;
+	dllName.MaximumLength = 18; 
+	dllName.Buffer = L"ntdll.dll"; 
 
 	status = LdrLoadDll(
 		L"\\??\\C:\\Windows\\System32",
@@ -304,9 +304,9 @@ nm_app_t * __stdcall nm_init()
 		return 0;
 	}
 
-	procName.length = 9;
-	procName.maximum_length = 9;
-	procName.buffer = "_snprintf";
+	procName.Length = 9;
+	procName.MaximumLength = 9;
+	procName.Buffer = "_snprintf";
 
 	status = LdrGetProcedureAddress(module, &procName, 0, (void**)&snprintf);
 	if(status > 0)
@@ -833,9 +833,9 @@ cleanup_file:
 	UNICODE_STRING fileName;
 	IO_STATUS_BLOCK iosb;
 
-	fileName.buffer = L"clout.txt";
-	fileName.length = 9 << 1;
-	fileName.maximum_length = fileName.length;
+	fileName.Buffer = L"clout.txt";
+	fileName.Length = 9 << 1;
+	fileName.MaximumLength = fileName.Length;
 
 	objAttr.SizeOf = sizeof(objAttr);
 	objAttr.ObjectName = &fileName;
@@ -861,6 +861,10 @@ cleanup_file:
 		return 0;
 	}
 
+	userParams.CommandLine.Buffer = imageName->Buffer;
+	userParams.CommandLine.Length = imageName->Length;
+	userParams.CommandLine.MaximumLength = imageName->Length;
+
 	userParams.Environment = (wchar_t*)envData;
 	userParams.EnvironmentSize = sizeof(envData);
 	userParams.EnvironmentVersion = 0;
@@ -876,6 +880,11 @@ cleanup_file:
 		curProcessParams->Length, userParams.Length);
 	*/
 
+	LogMessageA("ImageSubsystem: 0x%1!x!\n", peb->ImageSubsystem);
+	LogMessageA("ImageSubsystemMajorVersion: 0x%1!x!\n", peb->ImageSubsystemMajorVersion);
+	LogMessageA("ImageSubsysteMinorVersion: 0x%1!x!\n", peb->ImageSubsystemMinorVersion);
+
+
 	LogMessageA("ConsoleHandle: 0x%1!p!\n", curProcessParams->ConsoleHandle);
 	LogMessageA("StdInputHandle: 0x%1!p!\n", curProcessParams->StdInputHandle);
 	LogMessageA("StdOutputHandle: 0x%1!p!\n", curProcessParams->StdOutputHandle);
@@ -883,15 +892,19 @@ cleanup_file:
 
 
 	attrList.Attributes[0].Attribute = PS_ATTRIBUTE_IMAGE_NAME;
-	attrList.Attributes[0].Size = imageName->length;
-	attrList.Attributes[0].Value = imageName->buffer;
+	attrList.Attributes[0].Size = imageName->Length;
+	attrList.Attributes[0].Value = imageName->Buffer;
 
 
+	/*
 	PS_STD_HANDLE_INFO handleInfo = {0};
+	handleInfo.Flags = (0x7 << 3) | PsNeverDuplicate; // duplicate all standard handles
+	handleInfo.StdHandleSubsystemType = 0x3;
 
 	attrList.Attributes[1].Attribute = PS_ATTRIBUTE_STD_HANDLE_INFO;
 	attrList.Attributes[1].Size = sizeof(PS_STD_HANDLE_INFO);
 	attrList.Attributes[1].ValuePtr = &handleInfo;
+	*/
 
 	unsigned long processFlags =
 	PROCESS_CREATE_FLAGS_INHERIT_FROM_PARENT |
@@ -932,6 +945,20 @@ cleanup_file:
 	NtDelayExecution(true, &timeout);
 	*/
 
+	SECURITY_ATTRIBUTES processSA;
+	SECURITY_ATTRIBUTES threadSA;
+
+	CreateProcessW(
+		0,
+		imageName->Buffer,
+		0, 0,
+		true,
+	);
+
+	//NtCreateNamedPipeFile();
+
+
+	NtClose(fileHandle);
 
 	return 0;
 #endif
@@ -1054,9 +1081,9 @@ void win32_char_to_unicode(UNICODE_STRING *us,
 {
 	unsigned short n;
 	n = str8to16(buf, str, len);
-	us->length = n;
-	us->maximum_length = size;
-	us->buffer = buf;
+	us->Length = n;
+	us->MaximumLength = size;
+	us->Buffer = buf;
 }
 
 
@@ -1071,9 +1098,9 @@ nm_lib_t * __stdcall nm_lib_load(wchar_t *filePath)
 	UNICODE_STRING string;
 	unsigned long status;
 
-	string.length = 12 * sizeof(wchar_t);
-	string.maximum_length = 64 * 2;
-	string.buffer = L"kernel32.dll";
+	string.Length = 12 * sizeof(wchar_t);
+	string.MaximumLength = 64 * 2;
+	string.Buffer = L"kernel32.dll";
 
 	//LdrGetDllHandle();
 
@@ -1744,11 +1771,10 @@ unsigned int __stdcall nm_system_entry(int arg, char **argv)
 
 
 	UNICODE_STRING processPath;
-	processPath.length = 69 << 1;
-	processPath.buffer = L"\\??\\C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\cl.exe";
-	processPath.maximum_length = processPath.length;
+	processPath.Length = 69 << 1;
+	processPath.Buffer = L"\\??\\C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\cl.exe";
+	processPath.MaximumLength = processPath.Length;
 
-	LogMessageW(L"Process Path: %1!.*s!\n", 69, processPath.buffer);
 	win32CreateProcess(&processPath);
 
 	//nm_timer_new(app);

@@ -79,7 +79,7 @@
 
 #define STATUS_MEMORY_NOT_ALLOCATED    0xC00000A0L
 
-
+#define STATUS_NOT_SUPPORTED           0xC00000BBL
 
 #define STATUS_INVALID_PARAMETER_1     0xC00000EFL
 #define STATUS_INVALID_PARAMETER_2     0xC00000F0L
@@ -112,7 +112,7 @@
 
 
 
-#include "win32mem.h"
+#include "win32\win32mem.h"
 
 
 
@@ -240,32 +240,39 @@ typedef union _LARGE_INTEGER {
 } LARGE_INTEGER, *PLARGE_INTEGER;
 
 
+typedef struct _SECURITY_ATTRIBUTES {
+	DWORD SizeOf;
+	void *SecurityDescriptor;
+	bool InheritHandle;
+} SECURITY_ATTRIBUTES;
+
+
 
 typedef struct _UNICODE_STRING {
 /**
  * Specifies the length, in bytes, of the string pointed to by the buffer member,
  * not including the terminating NULL character, if any.
 */
-	unsigned short length;
+	unsigned short Length;
 
 /**
  * Specifies the total size, in bytes, or memory allocated for buffer, Up to
  * maximum_length bytes may be written into the buffer without trampling memory.
 */
-	unsigned short maximum_length;
+	unsigned short MaximumLength;
 
 /**
  * Pointer to a wide-character string.
 */
-	wchar_t *buffer;
+	wchar_t *Buffer;
 } UNICODE_STRING;
 
 
 
 typedef struct _ANSI_STRING {
-	unsigned short length;
-	unsigned short maximum_length;
-	char *buffer;
+	unsigned short Length;
+	unsigned short MaximumLength;
+	char *Buffer;
 } ANSI_STRING;
 
 
@@ -550,7 +557,7 @@ typedef struct _CLIENT_ID {
 
 
 
-#include "win32sys.h"
+#include "win32\win32sys.h"
 
 
 
@@ -642,9 +649,9 @@ typedef struct _FILE_OBJECT {
 
 
 
-#include "win32io.h"
+#include "win32\win32io.h"
 
-#include "win32section.h"
+#include "win32\win32section.h"
 
 typedef struct _LIST_ENTRY {
 	struct _LIST_ENTRY *Flink;
@@ -727,12 +734,7 @@ typedef struct _ACTIVATION_CONTEXT_STACK
 } ACTIVATION_CONTEXT_STACK;
 
 
-#include "win32timer.h"
-
-
-#include "win32process.h"
-
-
+#include "win32\win32timer.h"
 
 
 // Define 128-bit 16-byte aligned xmm register type
@@ -742,9 +744,12 @@ typedef struct _M128A {
 } M128A, *PM128A;
 
 
-#include "win32thread.h"
 
-#include "win32reg.h"
+#include "win32\win32process.h"
+#include "win32\win32thread.h"
+
+
+#include "win32\win32reg.h"
 
 
 /**
@@ -813,7 +818,7 @@ unsigned long __stdcall NtDuplicateObject(
 
 
 
-#include "win32file.h"
+#include "win32\win32file.h"
 
 unsigned long __stdcall NtClose(void *Handle);
 
@@ -876,40 +881,6 @@ unsigned long __stdcall LdrUnloadDll(
 unsigned long __stdcall NtQueryPerformanceCounter
 	(LARGE_INTEGER *PerformanceCounter,
 	LARGE_INTEGER *PerformanceFrequency);
-
-
-
-/**
- * Creates and opens the server end handle of the first instance of
- * a specific named pipe or another instance of an existing named pipe.
- */
-unsigned long __stdcall NtCreateNamedPipeFile(
-
-// Supplies a handle to the file on which the service is being performed.
-	void **NamedPipeFileHandle,
-	ACCESS_MASK DesiredAccess,
-	OBJECT_ATTRIBUTES *ObjectAttributes,
-	IO_STATUS_BLOCK *IoStatusBlock,
-	unsigned long SharedAccess,
-	unsigned long CreateDisposition,
-
-// Caller options for how to perform the create/open
-	unsigned long CreateOptions,
-
-// Mode in which to write the pipe
-	bool WriteModeMessage,
-
-// Mode in which to read the pipe
-	bool ReadModeMessage,
-
-// Specifies how the operation is to be completed
-	bool NonBlocking,
-
-// Maximum number of simultaneous instances of the named pipe.
-	unsigned long MaxInstances,
-	unsigned long InBufferSize,
-	unsigned long OutBufferSize,
-	LARGE_INTEGER *DefaultTimeout);
 
 
 

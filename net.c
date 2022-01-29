@@ -42,13 +42,13 @@ void __stdcall nm_network_cards(void *NetworkCardsKeyHandle, UNICODE_STRING *pat
 	}
 
 
-	wchar_t *pathEnd = (wchar_t*)((char*)path->buffer + path->length);	
+	wchar_t *pathEnd = (wchar_t*)((char*)path->Buffer + path->Length);	
 	*pathEnd++ = L'\\';
-	path->length++;
+	path->Length++;
 
-	valueName.buffer = L"ServiceName";
-	valueName.length = 11 << 1;
-	valueName.maximum_length = 0;
+	valueName.Buffer = L"ServiceName";
+	valueName.Length = 11 << 1;
+	valueName.MaximumLength = 0;
 
 	
 // enumerate each subkey and get the ServiceName value which is a GUID
@@ -73,7 +73,7 @@ void __stdcall nm_network_cards(void *NetworkCardsKeyHandle, UNICODE_STRING *pat
 
 		nm_memcpy(pathEnd, basicInfo->Name, nameLength);
 
-		path->length += nameLength;
+		path->Length += nameLength;
 
 		status = NtOpenKey(&NetworkCardKeyHandle, access, &oa);
 		if(status > 0)
@@ -105,7 +105,7 @@ void __stdcall nm_network_cards(void *NetworkCardsKeyHandle, UNICODE_STRING *pat
 
 		NtClose(NetworkCardKeyHandle);
 		
-		path->length -= nameLength; 
+		path->Length -= nameLength; 
 	}
 
 }
@@ -119,9 +119,9 @@ void __stdcall LoadWinsock()
 	ANSI_STRING ProcName = {0};
 
 	wchar_t *searchPath = L"\\??\\C:\\Windows\\SysWOW64";
-	FileName.buffer = L"ws2_32.dll";
-	FileName.length = 10 << 1; //34 << 1;
-	FileName.maximum_length = FileName.length;
+	FileName.Buffer = L"ws2_32.dll";
+	FileName.Length = 10 << 1; //34 << 1;
+	FileName.MaximumLength = FileName.Length;
 
 	status = LdrGetDllHandle(searchPath, 0, &FileName, &DllHandle);
 	if(status > 0)
@@ -147,73 +147,73 @@ void __stdcall LoadWinsock()
 
 	LogMessageA("DllHandle: 0x%1!p!\n", DllHandle);
 
-	ProcName.length = 10;
-	ProcName.buffer = "WSAStartup";
+	ProcName.Length = 10;
+	ProcName.Buffer = "WSAStartup";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSAStartup);
 
 	// Minimum support Windows 8.1
-	ProcName.buffer = "WSASocketW";
+	ProcName.Buffer = "WSASocketW";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSASocketW);
 
-	ProcName.buffer = "WSAConnect";
+	ProcName.Buffer = "WSAConnect";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSAConnect);
 
-	ProcName.length = 15;
-	ProcName.buffer = "WSAGetLastError";
+	ProcName.Length = 15;
+	ProcName.Buffer = "WSAGetLastError";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSAGetLastError);
 
-	ProcName.length = 7;
-	ProcName.buffer= "connect";
+	ProcName.Length = 7;
+	ProcName.Buffer= "connect";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &connect);
 
-	ProcName.buffer = "WSASend";
+	ProcName.Buffer = "WSASend";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSASend);
 
-	ProcName.buffer = "WSARecv";
+	ProcName.Buffer = "WSARecv";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecv);
 
-	ProcName.length = 4;
-	ProcName.buffer = "send";
+	ProcName.Length = 4;
+	ProcName.Buffer = "send";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &send);
 
-	ProcName.buffer = "recv";
+	ProcName.Buffer = "recv";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &recv);
 
-	ProcName.buffer = "bind";
+	ProcName.Buffer = "bind";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &bind);
 
-	ProcName.length = 9;
-	ProcName.buffer = "WSASendTo";
+	ProcName.Length = 9;
+	ProcName.Buffer = "WSASendTo";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSASendTo);
 
-	ProcName.buffer = "WSARecvEx";
+	ProcName.Buffer = "WSARecvEx";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecvEx);
 
-	ProcName.length = 6;
-	ProcName.buffer = "sendto";
+	ProcName.Length = 6;
+	ProcName.Buffer = "sendto";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &sendto);
 
-	ProcName.buffer = "listen";
+	ProcName.Buffer = "listen";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &listen);
 
-	ProcName.buffer = "socket";
+	ProcName.Buffer = "socket";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &socket);
 
-	ProcName.length = 8;
-	ProcName.buffer = "shutdown";
+	ProcName.Length = 8;
+	ProcName.Buffer = "shutdown";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &shutdown);
 
-	ProcName.buffer = "recvfrom";
+	ProcName.Buffer = "recvfrom";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &recvfrom);
 
-	ProcName.buffer = "WSAIoctl";
+	ProcName.Buffer = "WSAIoctl";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSAIoctl);
 
-	ProcName.length = 11;
-	ProcName.buffer = "ioctlsocket";
+	ProcName.Length = 11;
+	ProcName.Buffer = "ioctlsocket";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &ioctlsocket);
 
-	ProcName.buffer = "WSARecvFrom";
+	ProcName.Buffer = "WSARecvFrom";
 	LdrGetProcedureAddress(DllHandle, &ProcName, 0, &WSARecvFrom);
 }
 
@@ -554,12 +554,14 @@ void dns_connect(nm_dns_t *dns)
 
 
 	//len = WSARecv(s, &dns->recvbuf, 1, &numBytes, &flags, 0, 0);
+	/*
 	len = WSARecvFrom(s, &dns->recvbuf, 1, &numBytes, &flags, &Addr, &fromlen, 0, 0);
 	if(len == -1)
 	{
 		LogMessageA("RecvFrom failed: %1!u!\n", WSAGetLastError());	
 		return;
 	}
+	*/
 
 	LogMessageA("recvfrom len: %1!u! | %2!u!\n", len, fromlen);
 
@@ -600,16 +602,16 @@ void  * nm_net_init(void *obj)
 
 	wchar_t buffer[512];
 
-	path.length = 75 << 1;
+	path.Length = 75 << 1;
 	nm_memcpy(
 		buffer,
 		L"\\Registry\\Machine\\Software\\Microsoft"
 		"\\Windows NT\\CurrentVersion\\NetworkCards",
-		path.length
+		path.Length
 	);
 
-	path.buffer = buffer;
-	path.maximum_length = 512;
+	path.Buffer = buffer;
+	path.MaximumLength = 512;
 
 	status = NtOpenKey(&KeyHandle, access, &oa);  
 	if(status > 0)

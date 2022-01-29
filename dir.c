@@ -69,9 +69,9 @@ nm_dir_t * __stdcall nm_dir_open(nm_app_t *app, char *path, size_t length)
 	wchar_length = str8to16(pathbuf, path, length);
 	LogMessageW(L"path length: %1!d!\n", wchar_length/2);
 
-	str.length = wchar_length;
-	str.maximum_length = 256 * sizeof(wchar_t);
-	str.buffer = pathbuf;
+	str.Length = wchar_length;
+	str.MaximumLength = 256 * sizeof(wchar_t);
+	str.Buffer = pathbuf;
 
 	LogMessageW(L"path: %1!.*s!\n", wchar_length/2, pathbuf);
 
@@ -134,9 +134,9 @@ bool __stdcall nm_dir_exists(char *path, size_t length)
 
 	wchar_length = str8to16(pathbuf, path, length);
 
-	str.length = wchar_length;
-	str.maximum_length = 256;
-	str.buffer = pathbuf;
+	str.Length = wchar_length;
+	str.MaximumLength = 256;
+	str.Buffer = pathbuf;
 
 	oa.SizeOf = sizeof(OBJECT_ATTRIBUTES);
 	oa.Attributes = 0;

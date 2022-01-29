@@ -650,3 +650,37 @@ unsigned long __stdcall NtQueryDirectoryFileEx(
 
 
 
+/**
+ * Creates and opens the server end handle of the first instance of
+ * a specific named pipe or another instance of an existing named pipe.
+ */
+unsigned long __stdcall NtCreateNamedPipeFile(
+
+// Supplies a handle to the file on which the service is being performed.
+	void **NamedPipeFileHandle,
+	ACCESS_MASK DesiredAccess,
+	OBJECT_ATTRIBUTES *ObjectAttributes,
+	IO_STATUS_BLOCK *IoStatusBlock,
+	unsigned long SharedAccess,
+	unsigned long CreateDisposition,
+
+// Caller options for how to perform the create/open
+	unsigned long CreateOptions,
+
+// Mode in which to write the pipe
+	bool WriteModeMessage,
+
+// Mode in which to read the pipe
+	bool ReadModeMessage,
+
+// Specifies how the operation is to be completed
+	bool NonBlocking,
+
+// Maximum number of simultaneous instances of the named pipe.
+	unsigned long MaxInstances,
+	unsigned long InBufferSize,
+	unsigned long OutBufferSize,
+	LARGE_INTEGER *DefaultTimeout);
+
+
+

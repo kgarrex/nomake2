@@ -419,7 +419,7 @@ typedef enum _PS_ATTRIBUTE_ENUM {
 	PsAttributeMemoryReserve,  // in PS_MEMORY_RESERVE
 	PsAttributePriorityClass,  // in unsigned char
 	PsAttributeErrorMode,      // in unsigned long
-	PsAttributeStdHandleInfo,  // 10, in PS_STD_HANDLE_INFO
+	PsAttributeStdHandleInfo,  // in PS_STD_HANDLE_INFO
 	PsAttributeHandleList,     // in HANDLE *
 	PsAttributeGroupAffinity,  // in GROUP_AFFINITY *
 	PsAttributePreferredNode,  // in unsigned short *
@@ -563,14 +563,23 @@ typedef struct _PS_MEMORY_RESERVE {
 
 typedef enum _PS_STD_HANDLE_STATE {
 	PsNeverDuplicate,
+
+	// duplicate standard handles specified by PseudoHandleMask, and only if
+	// StdHandleSubsystemType matches the image subsystem
 	PsRequestDuplicate,
+
+	// always duplicate standard handles
 	PsAlwaysDuplicate,
 } PS_STD_HANDLE_STATE;
+
+#define PS_STD_INPUT_HANDLE  0x1
+#define PS_STD_OUTPUT_HANDLE 0x2
+#define PS_STD_ERROR_HANDLE  0x4
 
 
 typedef struct _PS_STD_HANDLE_INFO {
 	union {
-		unsigned long Flags; // (PS_STD_* << 3) | PS_STD_HANDLE_STATE
+		unsigned long Flags; // ((PS_STD_*) << 3) | PS_STD_HANDLE_STATE
 /*
 		struct {
 			unsigned long StdHandleState : 2; // PS_STD_HANDLE_STATE	
@@ -580,6 +589,7 @@ typedef struct _PS_STD_HANDLE_INFO {
 	};
 	unsigned long StdHandleSubsystemType;
 } PS_STD_HANDLE_INFO;
+
 
 
 
@@ -652,8 +662,7 @@ typedef struct _PS_STD_HANDLE_INFO {
 
 
 
-
-#define P_REQUEST_BREAKAWAY 0x01
+#define PS_REQUEST_BREAKAWAY 0x01
 #define PS_NO_DEBUG_INHERIT  0x02
 #define PS_INHERIT_HANDLES   0x04
 #define PS_UNKNOWN_VALUE     0x08
@@ -741,6 +750,81 @@ unsigned long __stdcall NtOpenProcess
 	CLIENT_ID *ClientId);
 
 
+// Process CreationFlags
+#define DEBUG_PROCESS                    0x00000001
+#define DEBUG_ONLY_THIS_PROCESS          0x00000002
+#define CREATE_SUSPENDED                 0x00000004
+#define DETACH_PROCESS                   0x00000008
+#define CREATE_NEW_CONSOLE               0x00000010
+#define CREATE_NEW_PROCESS_GROUP         0x00000200
+#define CREATE_UNICODE_ENVIRONMENT       0x00000400
+#define CREATE_SEPARATE_WOW_VDM          0x00000800
+#define CREATE_SHARED_WOW_VDM            0x00001000
+#define INHERIT_PARENT_AFFINITY          0x00010000
+#define CREATE_PROTECTED_PROCESS         0x00040000
+#define EXTENDED_STARTUPINFO_PRESENT     0x00080000
+#define CREATE_SECURE_PROCESS            0x00400000
+#define CREATE_BREAKAWAY_FROM_JOB        0x01000000
+#define CREATE_PRESERVE_CODE_AUTHZ_LEVEL 0x02000000
+#define CREATE_DEFAULT_ERROR_MODE        0x04000000
+#define CREATE_NO_WINDW                  0x08000000
 
 
+
+#define STARTF_USESHOWWINDOW      0x00000001
+#define STARTF_USESIZE            0x00000002
+#define STARTF_USEPOSITION        0x00000004
+#define STARTF_USECOUNTCHARS      0x00000008
+#define STARTF_USEFILLATTRIBUTE   0x00000010
+#define STARTF_RUNFULLSCREEN      0x00000020
+#define STARTF_FORCEONFEEDBACK    0x00000040
+#define STARTF_FORCEOFFFEEDBACK   0x00000080
+#define STARTF_USESTDHANDLES      0x00000100
+#define STARTF_USEHOTKEY          0x00000200
+#define STARTF_TITLEISLINKNAME    0x00000800
+#define STARTF_TITLEISAPPID       0x00001000
+#define STARTF_PREVENTPINNING     0x00002000
+#define STARTF_UNTRUSTEDSOURCE    0x00008000
+
+typedef struct _STARTUPINFOW {
+	DWORD SizeOf;
+	wchar_t *Reserved;
+	wchar_t *Desktop;
+	wchar_t *Title;
+	DWORD   XWindow;
+	DWORD   YWindow;
+	DWORD   Width;
+	DWORD   Height;
+	DWORD   XCountChars;
+	DWORD   YCountChars;
+	DWORD   FillAttribute;
+	DWORD   Flags;
+	WORD    ShowWindow;
+	WORD    Reserved2;
+	char   *Reserved3;
+	void   *StdInput;
+	void   *StdOutput;
+	void   *StdError;
+} STARTUPINFOW;
+
+
+typedef struct _PROCESS_INFORATION {
+	void *ProcessHandle;
+	void *ThreadHandle;
+	DWORD ProcessId;
+	DWORD ThreadId;
+} PROCESS_INFORMATION;
+
+
+bool __stdcall CreateProcessW(
+	wchar_t *ApplicationName,
+	wchar_t *CommandLine,
+	SECURITY_ATTRIBUTES *ProcessAttributes,
+	SECURITY_ATTRIBUTES *ThreadAttributes,
+	bool InheritHandles,
+	DWORD CreationFlags,
+	void *Environment,
+	wchar_t *CurrentDirectory,
+	STARTUPINFOW *StartupInfo,
+	PROCESS_INFORMATION *ProcessInfo);
 
