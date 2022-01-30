@@ -91,24 +91,37 @@ size_t    typedef qword
 
 
 
-global NtCurrentTeb@0
+global _NtCurrentTeb@0
+global _NtCurrentPeb@0
+
+
 
 ; Returns: Pointer to the current thread's TEB
 
+_NtCurrentTeb@0 :
 %ifidn __?OUTPUT_FORMAT?__, win32
-
-NtCurrentTeb@0 :
 	mov eax, dword [fs:0x18]
 	add esp, 4
 	jmp [esp-4]
-
 %elifidn __?OUTPUT_FORMAT?__, win64
-
-_NtCurrentTeb@0 :
 	mov rax, qword [gs:0x30]
 	add esp, 8
 	jmp [esp-8]
+%endif
 
+
+
+; Returns Pointer to the PEB of the current process
+
+_NtCurrentPeb@0:
+%ifidn __?OUTPUT_FORMAT?__, win32
+	mov eax, dword [fs:0x30]
+	add esp, 4
+	jmp [esp-4]
+%elifidn __?OUTPUT_FORMAT?__, win64
+	mov rax, qword [gs:0x60]
+	add esp, 8
+	jmp [esp-8]
 %endif
 
 

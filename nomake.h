@@ -28,9 +28,9 @@
 
 #define STATUS_INFO_LENGTH_MISMATCH    0xC0000004L
 #define STATUS_ACCESS_VIOLATION        0xC0000005L
+#define STATUS_INVALID_HANDLE          0xC0000008L
 #define STATUS_INVALID_CID             0xC000000BL
 #define STATUS_INVALID_PARAMETER       0xC000000DL
-#define STATUS_INVALID_HANDLE          0xC0000008L
 
 
 /**
@@ -79,6 +79,12 @@
 
 #define STATUS_MEMORY_NOT_ALLOCATED    0xC00000A0L
 
+// The specified named pipe is in the closing state
+#define STATUS_PIPE_CLOSING            0xC00000b1L
+// The specified named pipe is in the connected state.
+#define STATUS_PIPE_CONNECTED          0xC00000b2L
+// The specified named pipe is in the listening state.
+#define STATUS_PIPE_LISTENING          0xC00000b3L
 #define STATUS_NOT_SUPPORTED           0xC00000BBL
 
 #define STATUS_INVALID_PARAMETER_1     0xC00000EFL
@@ -536,8 +542,8 @@ void __stdcall RtlZeroMemory(
 	size_t Length);
 
 
-typedef void (__stdcall *PIO_APC_ROUTINE)
-	(void *, struct _IO_STATUS_BLOCK *, unsigned long); 
+typedef void (__stdcall *PIO_APC_ROUTINE)(void *, struct _IO_STATUS_BLOCK *, unsigned long); 
+
 
 typedef struct _CSR_API_MSG {
 	long NOT_COMPLETE;
@@ -611,10 +617,11 @@ typedef struct _DRIVER_OBJECT {
 	PDRIVER_UNLOAD_ROUTINE DriverUnload;
 	PDRIVER_DISPATCH_ROUTINE MajorFunction[IRP_MJ_MAXIMUM_FUNCTION];
 } DRIVER_OBJECT, *PDRIVER_OBJECT;
-
+*/
 
 typedef struct _FILE_OBJECT {
 	short Type;
+	/*
 	short Size;
 	struct _DEVICE_OBJECT *DeviceObject;
 	struct _VPB *Vpb;
@@ -644,8 +651,8 @@ typedef struct _FILE_OBJECT {
 	ULONG IrpListLock;
 	struct _LIST_ENTRY IrpList;
 	void *FileObjectExtension;
+	*/
 } FILE_OBJECT, *PFILE_OBJECT;
-*/
 
 
 

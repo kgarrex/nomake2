@@ -169,6 +169,9 @@ typedef struct _PEB
 } PEB;
 
 
+PEB * __stdcall NtCurrentPeb(void);
+
+
 
 typedef enum _PROCESS_INFORMATION_CLASS
 {
@@ -767,7 +770,7 @@ unsigned long __stdcall NtOpenProcess
 #define CREATE_BREAKAWAY_FROM_JOB        0x01000000
 #define CREATE_PRESERVE_CODE_AUTHZ_LEVEL 0x02000000
 #define CREATE_DEFAULT_ERROR_MODE        0x04000000
-#define CREATE_NO_WINDW                  0x08000000
+#define CREATE_NO_WINDOW                 0x08000000
 
 
 

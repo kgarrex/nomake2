@@ -382,6 +382,7 @@ typedef struct _TEB
 
 TEB * __stdcall NtCurrentTeb(void);
 
+
 unsigned long __stdcall NtGetContextThread(
 	void *ThreadHandle,
 	CONTEXT *ThreadContext);
