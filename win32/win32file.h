@@ -649,6 +649,20 @@ unsigned long __stdcall NtQueryDirectoryFileEx(
 
 
 
+typedef struct _FILE_PIPE_LOCAL_INFORMATION
+{
+	unsigned long NamedPipeType;
+	unsigned long NamedPipeConfiguration;
+	unsigned long MaximumInstances;
+	unsigned long CurrentInstances;
+	unsigned long InboundQuota;
+	unsigned long ReadDataAvailable;
+	unsigned long OutboundQuota;
+	unsigned long WriteQuotaAvailable;
+	unsigned long NamedPipeState;
+	unsigned long NamedPipeEnd;
+} FILE_PIPE_LOCAL_INFORMATION;
+
 
 /**
  * Creates and opens the server end handle of the first instance of
@@ -681,6 +695,94 @@ unsigned long __stdcall NtCreateNamedPipeFile(
 	unsigned long InBufferSize,
 	unsigned long OutBufferSize,
 	LARGE_INTEGER *DefaultTimeout);
+
+
+
+#define CTL_CODE(DeviceType, Function, Method, Access) \
+	((DeviceType<<16)|(Access<<14)|(Function<<2)|(Method))
+
+
+#define METHOD_BUFFERED   0
+#define METHOD_IN_DIRECT  1
+#define METHOD_OUT_DIRECT 2
+#define METHOD_NEITHER    3
+
+#define FILE_ANY_ACCESS   0
+#define FILE_READ_ACCESS  1
+#define FILE_WRITE_ACCESS 2
+
+
+/*
+#define FSCTL_PIPE_ASSIGN_EVENT             0x00110000
+#define FSCTL_PIPE_DISCONNECT               0x00110004
+#define FSCTL_PIPE_LISTEN                   0x00110008
+#define FSCTL_PIPE_PEEK                     0x0011400c
+#define FSCTL_PIPE_QUERY_EVENT              0x00110010
+#define FSCTL_PIPE_TRANSCEIVE               0x00118015
+#define FSCTL_PIPE_WAIT                     0x00110018
+#define FSCTL_PIPE_IMPERSONATE              0x0011001c
+#define FSCTL_PIPE_SET_CLIENT_PROCESS       0x00110020
+#define FSCTL_PIPE_QUERY_CLIENT_PROCESS     0x00110024
+#define FSCTL_PIPE_GET_PIPE_ATTRIBUTE       0x00110028
+#define FSCTL_PIPE_SET_PIPE_ATTRIBUTE       0x0011002c
+#define FSCTL_PIPE_GET_CONNECTION_ATTRIBUTE 0x00110030
+#define FSCTL_PIPE_SET_CONNECTION_ATTRIBUTE 0x00110034
+#define FSCTL_PIPE_SET_HANDLE_ATTRIBUTE     0x0011003c
+#define FSCTL_PIPE_FLUSH                    0x00118040
+#define FSCTL_PIPE_INTERNAL_READ            0x00115ff4
+#define FSCTL_PIPE_INTERNAL_WRITE           0x00119ff8
+#define FSCTL_PIPE_INTERNAL_TRANSCEIVE      0x00119fff
+#define FSCTL_PIPE_INTERNAL_READ_OVFLOW     0x00116000
+*/
+
+
+
+
+#define FSCTL_PIPE_ASSIGN_EVENT             CTL_CODE(FILE_DEVICE_NAMED_PIPE,    0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_DISCONNECT               CTL_CODE(FILE_DEVICE_NAMED_PIPE,    1, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_LISTEN                   CTL_CODE(FILE_DEVICE_NAMED_PIPE,    2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_PEEK                     CTL_CODE(FILE_DEVICE_NAMED_PIPE,    3, METHOD_BUFFERED, FILE_READ_DATA)
+#define FSCTL_PIPE_QUERY_EVENT              CTL_CODE(FILE_DEVICE_NAMED_PIPE,    4, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_TRANSCEIVE               CTL_CODE(FILE_DEVICE_NAMED_PIPE,    5, METHOD_BUFFERED, \
+	FILE_READ_DATA | FILE_WRITE_DATA)
+#define FSCTL_PIPE_WAIT                     CTL_CODE(FILE_DEVICE_NAMED_PIPE,    6, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_IMPERSONATE              CTL_CODE(FILE_DEVICE_NAMED_PIPE,    7, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_CLIENT_PROCESS       CTL_CODE(FILE_DEVICE_NAMED_PIPE,    8, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_QUERY_CLIENT_PROCESS     CTL_CODE(FILE_DEVICE_NAMED_PIPE,    9, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_GET_PIPE_ATTRIBUTE       CTL_CODE(FILE_DEVICE_NAMED_PIPE,   10, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_PIPE_ATTRIBUTE       CTL_CODE(FILE_DEVICE_NAMED_PIPE,   11, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_GET_CONNECTION_ATTRIBUTE CTL_CODE(FILE_DEVICE_NAMED_PIPE,   12, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_CONNECTION_ATTRIBUTE CTL_CODE(FILE_DEVICE_NAMED_PIPE,   13, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_HANDLE_ATTRIBUTE     CTL_CODE(FILE_DEVICE_NAMED_PIPE,   15, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_FLUSH                    CTL_CODE(FILE_DEVICE_NAMED_PIPE,   16, METHOD_BUFFERED, FILE_WRITE_DATA)
+
+#define FSCTL_PIPE_INTERNAL_READ            CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2045, METHOD_BUFFERED, FILE_READ_DATA)
+#define FSCTL_PIPE_INTERNAL_WRITE           CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2046, METHOD_BUFFERED, FILE_WRITE_DATA)
+#define FSCTL_PIPE_INTERNAL_TRANSCEIVE      CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2047, METHOD_NEITHER, \
+	FILE_READ_DATA | FILE_WRITE_DATA)
+#define FSCTL_PIPE_INTERNAL_READ_OVFLOW     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2048, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+
+
+
+/*
+ * Send a control code directly to a specified file system or file system
+ * filter driver, causing the corresponding driver to perform the specified
+ * action.
+ */
+
+unsigned long __stdcall NtFsControlFile(
+	void *FileHandle,
+	void *Event,
+	PIO_APC_ROUTINE ApcRoutine,
+	void *ApcContext,
+	IO_STATUS_BLOCK *IoStatusBlock,
+	unsigned long FsControlCode,
+	void *InputBuffer,
+	unsigned long InputBufferLength,
+	void *OutputBuffer,
+	unsigned long OutputBufferLength);
 
 
 

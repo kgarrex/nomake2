@@ -1,5 +1,5 @@
 
-void * __stdcall CreateCompilerEndpoint()
+void * __stdcall CreateCompilerPipe()
 {
 	unsigned long status;
 	void *fileHandle;
@@ -43,30 +43,30 @@ void * __stdcall CreateCompilerEndpoint()
 	void *namedPipe;
 	ACCESS_MASK pipeAccess;
 
-	pipeName.Buffer = L"\\??\\PIPE\\NomakePipe";
-	pipeName.Length = 19 << 1;
+	pipeName.Buffer = L"\\Device\\NamedPipe\\NomakePipe";
+	pipeName.Length = 28 << 1;
 	pipeName.MaximumLength = pipeName.Length;
 
 	oa.ObjectName = &pipeName;
 	oa.RootDirectory = 0;
 
-	timeout.QuadPart = - (5 * 10000);
+	timeout.QuadPart = - (5 * 1000000);
 
-	pipeAccess.mask = SYNCHRONIZE | FILE_WRITE_DATA | FILE_READ_DATA;
+	pipeAccess.mask = SYNCHRONIZE | FILE_READ_DATA;
 	status = NtCreateNamedPipeFile(
 		&namedPipe,
 		pipeAccess,
 		&oa, // OBJECT_ATTRIBUTES
 		&iosb,
-		FILE_SHARE_READ | FILE_SHARE_WRITE,
-		FILE_OPEN_IF,
-		0, // CreateOptions
+		FILE_SHARE_WRITE | FILE_SHARE_READ,
+		FILE_CREATE,
+		FILE_SYNCHRONOUS_IO_NONALERT, // CreateOptions
 		false, // Write in byte mode
 		false, // Read in byte mode
-		false, // synchronous io
+		false, // asynchronous io?
 		-1, // number of allowed open handles
-		0, // Input buffer size
-		0, // Output buffer size
+		1024, // Input buffer size
+		1024, // Output buffer size
 		&timeout // default timeout
 	);
 	if(status > 0)
@@ -238,7 +238,7 @@ void * __stdcall Win32CreateProcess2(UNICODE_STRING *imageName)
 
 	void *fileHandle;
 
-	fileHandle = CreateCompilerEndpoint();
+	fileHandle = CreateCompilerPipe();
 
 
 	userParams.CommandLine.Buffer = imageName->Buffer;
@@ -344,12 +344,13 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 	bool success;
 
 
-	void *fileHandle = CreateCompilerEndpoint();
+	void *fileHandle = CreateCompilerPipe();
 
 	LogMessageA("FileHandle: %1!u!\n", fileHandle);
 
 	RtlZeroMemory(&si, sizeof(si));
 	si.SizeOf = sizeof(si);
+
 	si.Flags = STARTF_USESTDHANDLES;
 	si.StdInput  = 0;
 	si.StdOutput = fileHandle;
@@ -366,7 +367,7 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 		imageName->Buffer,
 		0, 0,
 		true,
-		0, // creation flags
+		CREATE_NO_WINDOW, // creation flags
 		0, // environment block
 		0, // current directory
 		&si,
@@ -383,15 +384,21 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 	IO_STATUS_BLOCK iosb;
 	RtlZeroMemory(ReadBuffer, 1024);
 
-	timeout.QuadPart = -(5 * 10000);
-	status = NtWaitForSingleObject(fileHandle, true, &timeout);
-	if(status > 0)
+	timeout.QuadPart = -(5 * 10000000);
+
+
+
+	status = WaitForSingleObject(pi.ProcessHandle, 2000);
+	if(status != 0)
 	{
-		LogMessageA("Wait for pipe failed: 0x%1!x1\n", status);
+		//LogMessageA("Wait for pipe failed: 0x%1!x1\n", status);
+		LogMessageA("Wait for pipe failed: 0x%1!x1\n", GetLastError());
 		return 0;
 	}
 
-	status = NtReadFile(fileHandle, 0, ProcessApcRoutine, 0, &iosb, ReadBuffer, 1024, 0, 0);
+	//NtDelayExecution(true, &timeout);
+
+	status = NtReadFile(fileHandle, 0, 0, 0, &iosb, ReadBuffer, 1024, 0, 0);
 	//LogMessageA("Buffer: %.*s\n", 
 	if(status > 0)
 	{
@@ -401,9 +408,8 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 
 	LogMessageA("Buffer: %1!.*s!\n", 128, ReadBuffer);
 
-	NtClose(fileHandle);
+
+	//NtClose(fileHandle);
 
 	return 0;
 }
-
-
