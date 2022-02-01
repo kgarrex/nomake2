@@ -712,6 +712,11 @@ unsigned long __stdcall NtCreateNamedPipeFile(
 #define FILE_WRITE_ACCESS 2
 
 
+#define PIPE_ACCESS_INBOUND   1
+#define PIPE_ACCESS_OUTBOUND  2
+#define PIPE_ACCESS_DUPLEX    3
+
+
 /*
 #define FSCTL_PIPE_ASSIGN_EVENT             0x00110000
 #define FSCTL_PIPE_DISCONNECT               0x00110004

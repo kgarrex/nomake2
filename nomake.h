@@ -87,6 +87,10 @@
 #define STATUS_PIPE_LISTENING          0xC00000b3L
 #define STATUS_NOT_SUPPORTED           0xC00000BBL
 
+// Used to indicate that a read operation was done on
+// an empty pipe.
+#define STATUS_PIPE_EMPTY              0xC00000D9L
+
 #define STATUS_INVALID_PARAMETER_1     0xC00000EFL
 #define STATUS_INVALID_PARAMETER_2     0xC00000F0L
 #define STATUS_INVALID_PARAMETER_3     0xC00000F1L

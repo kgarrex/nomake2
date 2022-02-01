@@ -52,19 +52,19 @@ void * __stdcall CreateCompilerPipe(void **serverSide, void **clientSide)
 
 	timeout.QuadPart = - (5 * 1000000);
 
-	pipeAccess.mask = SYNCHRONIZE | FILE_READ_DATA | FILE_WRITE_DATA;
+	pipeAccess.mask = SYNCHRONIZE | PIPE_ACCESS_INBOUND | FILE_WRITE_ATTRIBUTES;
 	status = NtCreateNamedPipeFile(
 		&namedPipe,
 		pipeAccess,
 		&oa, // OBJECT_ATTRIBUTES
 		&iosb,
-		FILE_SHARE_WRITE | FILE_SHARE_READ,
+		FILE_SHARE_WRITE, // must share either read or write access
 		FILE_CREATE,
-		FILE_SYNCHRONOUS_IO_NONALERT, // CreateOptions
-		false, // Write in byte mode
-		false, // Read in byte mode
-		false, // asynchronous io?
-		-1, // number of allowed open handles
+		0, //FILE_SYNCHRONOUS_IO_NONALERT, // CreateOptions
+		false, // Write in msg mode?
+		false, // Read in msg mode?
+		true, // asynchronous io?
+		2, // number of allowed open handles
 		1024, // Input buffer size
 		1024, // Output buffer size
 		&timeout // default timeout
@@ -76,8 +76,12 @@ void * __stdcall CreateCompilerPipe(void **serverSide, void **clientSide)
 	}
 
 	void *clientPipe;
-	status = NtOpenFile(&clientPipe, fileAccess,
-		&oa, &iosb,
+	pipeAccess.mask = SYNCHRONIZE | PIPE_ACCESS_OUTBOUND;
+	status = NtOpenFile(
+		&clientPipe,
+		pipeAccess, // must have SYNCHRONIZE access
+		&oa,
+		&iosb,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE);
 	if(status > 0)
@@ -85,6 +89,8 @@ void * __stdcall CreateCompilerPipe(void **serverSide, void **clientSide)
 		LogMessageA("NtOpenFile on pipe failed: 0x%1!x!\n", status);
 		return 0;
 	}
+
+	LogMessageA("Pipe Created\n");
 
 	*serverSide = namedPipe;
 	*clientSide = clientPipe;
@@ -373,6 +379,9 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 	void *serverSide;
 	void *fileHandle = CreateCompilerPipe(&serverSide, &clientSide);
 
+	LogMessageA("ClientSide: 0x%1!x1\n", clientSide);
+	LogMessageA("ServerSide: 0x%1!x1\n", serverSide);
+
 
 	RtlZeroMemory(&si, sizeof(si));
 	si.SizeOf = sizeof(si);
@@ -381,16 +390,16 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 	si.StdInput  = 0;
 	si.StdOutput = clientSide;
 	si.StdError  = clientSide;
-
-	LogMessageA("FileHandle: 0x%1!x1\n", fileHandle);
-
 	imageName->Buffer =
-	//L"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\cl.exe";
+	L"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\cl.exe";
+	imageName->Length = 65 << 1;
+
+	/*
+	imageName->Buffer =
 	L"C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools"
 	"\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx86\\x86\\cl.exe";
-
-	//imageName->Length = 65 << 1;
 	imageName->Length = 111 << 1;
+	*/
 
 
 	success = CreateProcessW(
@@ -419,17 +428,18 @@ void * __stdcall Win32CreateProcess3(UNICODE_STRING *imageName)
 
 	timeout.QuadPart = -(5 * 10000000);
 
-	status = WaitForSingleObject(pi.ThreadHandle, 2000);
-	if(status != 0)
+	
+	status = NtWaitForSingleObject(serverSide, true, &timeout);
+	if(status > 0)
 	{
 		//LogMessageA("Wait for pipe failed: 0x%1!x1\n", status);
-		LogMessageA("Wait for pipe failed: 0x%1!x1\n", GetLastError());
+		LogMessageA("Wait for pipe failed: 0x%1!x1\n", status);
 		return 0;
 	}
 
 	//NtDelayExecution(true, &timeout);
 
-	status = NtReadFile(serverSide, 0, 0, 0, &iosb, ReadBuffer, 1024, 0, 0);
+	status = NtReadFile(serverSide, 0, ProcessApcRoutine, 0, &iosb, ReadBuffer, 1024, 0, 0);
 	//LogMessageA("Buffer: %.*s\n", 
 	if(status > 0)
 	{
