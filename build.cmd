@@ -14,6 +14,7 @@ nomake.c helper.c
 
 nasm-2.15.05-win32\nasm-2.15.05\nasm -fwin32 lib.asm
 nasm-2.15.05-win32\nasm-2.15.05\nasm -fwin32 test.asm
+nasm-2.15.05-win32\nasm-2.15.05\nasm -fwin32 json\json.asm
 
 
 link -NOLOGO  -SUBSYSTEM:CONSOLE -DEFAULTLIB:ntdll.lib -DEFAULTLIB:kernel32.lib ^
