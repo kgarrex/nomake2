@@ -1,5 +1,6 @@
 
-global _parseJson@8
+global @jasm_init@12
+global @jasm_parse@8
 
 
 ; 3 bit parser state values
@@ -13,21 +14,27 @@ OBJ_REQ_VAL equ 6
 OBJ_END_VAL equ 7
 
 
-[section .bss]
+[section .bss] ; data?
 
 struc parser_state
 	phase:   resb 1
 endstruc
 
+
+
 [section .data]
 
+
+table dd                                       \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 
 [section .text]
 
 ;leaveNamespace:
-
+;
 ; 
 ;
 ; struct parser_state {
@@ -36,15 +43,57 @@ endstruc
 ;	size_t length
 ;	size_t lineno
 ;	char stack_index
-;	void *ns_stack[32]
+;	void *ns_stack[64]
 ; };
 ;
 ;
 
 
 
+
+; root         : [reg
+; phase        : word [reg]
+; ns_stack     : [reg+4]
+; buffer       : []
+; buflen       : []
+; lineno       : []
+; stack_index  : []
+; alloc        : []
+; free         : []
+
+MAX_KEY_LENGTH         equ 31
+MAX_NAMESPACE_LEVEL    equ 80
+PHASE_OFFSET           equ 4
+NS_STACK_OFFSET        equ 32
+LINENO_OFFSET          equ 16 
+STACKIDX_OFFSET        equ 20
+ALLOC_OFFSET           equ 24
+FREE_OFFSET            equ 28
+STRING_OFFSET          equ 8
+LENGTH_OFFSET          equ 12
+
+
+
+
+@jasm_init@12:
+	mov [ecx+ALLOC_OFFSET],       dword edx   ; alloc = edx
+	mov edx, [esp+4]                          ; get jasm_free_t off stack
+	mov [ecx+FREE_OFFSET],        dword edx   ; free = edx
+	mov [ecx+PHASE_OFFSET],       dword 0x0
+	mov [ecx+STACKIDX_OFFSET],    dword 0x0
+	mov [ecx+LINENO_OFFSET],      dword 0x0
+	mov [ecx+LENGTH_OFFSET],      dword 0x0   ; zero the string length
+	mov [ecx+STRING_OFFSET],      dword 0x0   ; zero the string
+
+	mov eax, 0x1
+	cpuid
+
+	add esp, 8                                ; fastcall stack cleanup
+	jmp [esp-8]
+
+
 ; int __cdecl parser_load(state *, char *utf8, size_t utf8len);
-_parser_load:
+_jasm_load_buf:
 	; set the json string to parse and length
 	; set the namespace stack index to 0 (xor idx, idx)
 	; set the line number to 1
@@ -61,12 +110,12 @@ _parser_load:
 ; 0x0b - vertical tab
 skipws:
 
-	
 
 
 
-; @parseJson@8 - JSON parser in pure assembly
-; .bgn - Initialize parser
+
+; @jasm_parse@8 - JSON parser in pure assembly
+; .bgn - Begin parser
 ; .ens - Enter namespace
 ; .aov - Array Optional Value
 ; .arv - Array Required Value
@@ -80,9 +129,7 @@ skipws:
 ; .eob - End of Buffer
 ; .fin - Finalize parser
 
-; phase : word [ebp+0]
-; ns_stack : [ebp+
-; root_ns : [ebp
+
 
 ; 0x5b - left square brackt
 ; 0x5d - right square bracket
@@ -92,8 +139,11 @@ skipws:
 ; 0x3a - colon
 ; 0x22 - double quote
 ; 0x5c - backslash
+; 0x66 - f (false)
+; 0x74 - t (true)
+; 0x6e - n (null)
 
-@parseJson@8:
+@jasm_parse@8:
 	sub esp, 8   ; create space on the stack for locals
 
 	mov ebp, ecx
@@ -118,7 +168,7 @@ skipws:
 	; skip whitespace
 	 
 	cmp byte [eax], 0x5d               ; if(*ptr == ']') 
-	jz .leave_namespace
+	jz .lns
 .arv:
 	mov eax, .arv - .bgn
 	mov [ebp+0], eax
@@ -158,7 +208,7 @@ skipws:
 	; advance the location pointer by 1
 	; jmp enter_namespace
 
-.eob
+.eob:
 	; out of buffer space but parser has not closed last namespace
 	; this means we must exit function but make reentrant
 
