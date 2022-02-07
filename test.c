@@ -54,6 +54,9 @@ void __fastcall free(void *ptr)
 {
 }
 
+jasm_set(jasm_t *, JASM_SET_BUFFER, buf, buflen);
+jasm_set(jasm_t *, JASM_SET_CALLBACKS, t
+
 
 //void __fastcall jasm_find_key(jasm_node_t *
 
@@ -68,7 +71,8 @@ int __cdecl main(int argc, char **argv)
 
 	j = (_jasm_t*)&jasm;
 
-	printf("Phase: %u\n", j->phase);
+	printf("Phase: 0x%p\n", j->phase);
+	printf("Length: 0x%p\n", j->length);
 	printf("Stack Index: %u\n", j->stackidx);
 	printf("LineNo: %u\n", j->lineno);
 	printf("Alloc: 0x%p | 0x%p\n", j->alloc, alloc);

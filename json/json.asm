@@ -2,6 +2,8 @@
 global @jasm_init@12
 global @jasm_parse@8
 
+global @jasm_rename_key@12
+
 
 ; 3 bit parser state values
 ARR_OPT_VAL equ 0
@@ -25,7 +27,9 @@ endstruc
 [section .data]
 
 
-table dd                                       \
+skipws_table dd                                \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
@@ -72,6 +76,9 @@ FREE_OFFSET            equ 28
 STRING_OFFSET          equ 8
 LENGTH_OFFSET          equ 12
 
+BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
+OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
+
 
 
 
@@ -81,8 +88,8 @@ LENGTH_OFFSET          equ 12
 	mov [ecx+FREE_OFFSET],        dword edx   ; free = edx
 	mov [ecx+PHASE_OFFSET],       dword 0x0
 	mov [ecx+STACKIDX_OFFSET],    dword 0x0
-	mov [ecx+LINENO_OFFSET],      dword 0x0
 	mov [ecx+LENGTH_OFFSET],      dword 0x0   ; zero the string length
+	mov [ecx+LINENO_OFFSET],      dword 0x0
 	mov [ecx+STRING_OFFSET],      dword 0x0   ; zero the string
 
 	mov eax, 0x1
@@ -100,38 +107,84 @@ _jasm_load_buf:
 	; set the phase to 0
 	jmp [esp] ; return
 
-
-; Skip the white space in a json document
-; 0x20 - space
+;*******************************************************************
+; skipws - Skip the white space in a json document
+;
 ; 0x09 - horizontal tab
-; 0x0d - carriage return
 ; 0x0a - line feed
-; 0x0c - page feed
-; 0x0b - vertical tab
+; 0x0d - carriage return
+; 0x20 - space
+;*********************************************************************
 skipws:
+	; subtract 1
+	; clear 2 msb bits  and 0x2f
+	; compare index in array
+	; if greater than 0, add number of chars
+	;mov reg, 
+.loop:
+	;sub byte [reg], 1
+	;and [reg], 0x2f
+	;test reg, reg 
 
 
 
-
-
-; @jasm_parse@8 - JSON parser in pure assembly
+;*********************************************************************
+; jasm_parse - JSON parser in pure assembly
+;
 ; .bgn - Begin parser
+;        Initialize the parser and create the root namespace
+;
 ; .ens - Enter namespace
+;        Enter a new a namespace (array/object) or reenter a namespace
+;        after leaving a nested namespace
+;
 ; .aov - Array Optional Value
-; .arv - Array Required Value
+;        The parser is at the start of a new array and is expecting
+;        the ending bracket or a new value
+;
+; .abv - Array Begin Value
+;        The parser is expecting a new array value. Any invalid value
+;        symbols results in an error
+;
 ; .aev - Array End Value
+;        The parser has just passed an array value and is expecting
+;        either a comma before a new value or the ending bracket
+;
 ; .ook - Object Optional Key
-; .ork - Object Required Key
+;        The parser is at the start of a new object and is expecting
+;        the ending curly brace or a new value
+;
+; .obk - Object Begin Key
+;        Expecting a new object value. Any invalid value symbol
+;        results in an error.
+;
 ; .oek - Object End Key
-; .orv - Object Required Value
+;        The end of a key string.
+;
+; .obv - Object Begin Value
+;
 ; .oev - Object End Value
+;
 ; .lns - Leave namespace
+;
 ; .eob - End of Buffer
+;
 ; .fin - Finalize parser
-
-
-
-; 0x5b - left square brackt
+;
+; .err - Error
+;
+;
+; eax  -
+; ebx  -
+; ecx  - length
+; edx  - 
+; ebp  - jasm_t *
+; esi  - stack index
+; edi  - string
+; esp  -
+; 
+;
+; 0x5b - left square bracket
 ; 0x5d - right square bracket
 ; 0x7b - left curly brace
 ; 0x7d - right curly brace
@@ -142,14 +195,21 @@ skipws:
 ; 0x66 - f (false)
 ; 0x74 - t (true)
 ; 0x6e - n (null)
+;*********************************************************************
 
-@jasm_parse@8:
+@jasm_parse@4:
 	sub esp, 8   ; create space on the stack for locals
 
 	mov ebp, ecx
-	movzx eax, word [ebp]       ; eax = parser->phase
-	add eax, .bgn               ; add .bgn address to phase offset
-	jmp eax                     ; jump to phase address
+	;movzx eax, word [ecx+PHASE_OFFSET]        ; eax = parser->phase
+	mov eax, dword [ecx+PHASE_OFFSET]         ; eax = parser->phase
+	add eax, .bgn                             ; add .bgn address to phase offset
+	jmp eax                                   ; jump to phase address
+
+	;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
+
+.sws:   ; skip whitespace
+	jmp eax
 
 .bgn:
 	; if parser->phase == 0, start parsing from scratch
@@ -162,48 +222,76 @@ skipws:
 	; jmp to ook
 
 
-.aov:
+.aov:   ; should just set the value to nullarr and not create a new namespace object
 	mov eax, .aov - .bgn; store the jmp address
 	mov [ebp], eax
-	; skip whitespace
+	; call skipws
 	 
-	cmp byte [eax], 0x5d               ; if(*ptr == ']') 
-	jz .lns
-.arv:
-	mov eax, .arv - .bgn
+	test byte [eax], 0x5d               ; if(*ptr == ']') 
+	je .lns
+
+.abv:
+	mov eax, .abv - .bgn
 	mov [ebp+0], eax
-	; skip whitespace
+	; call skipws
+	; validate value
+	; 
 
 	
 .aev:
 	mov eax, .aev - .bgn
 	mov [ebp+0], eax
 	; skip whitespace
-.ook:
+
+	test byte [eax], 0x2c               ; if(*ptr == ',')
+	je .abv
+	test byte [eax], 0x5d               ; if(*ptr == ']')
+	je .lns
+	; error here
+
+
+.ook:   ; should just set the value to nullobj and not create a new namespace object
 	mov eax, .ook - .bgn
 	mov [ebp+0], eax
+	call .sws
+
+	test byte [eax], 0x7d               ; if(*ptr == '}')
+	je .lns
+
+.obk:
+	mov eax, .obk - .bgn
+	mov [ecx+0], eax
 	; skip whitespace
-.ork:
-	mov eax, .ork - .bgn
-	mov [ebp+0], eax
-	; skip whitespace
+	test byte [ebp], 0x22                    ; if(*ptr == '"')
+	jne .err
+
 .oek:
 	mov eax, .oek - .bgn
 	mov [ebp+0], eax
 	; skip whitespace
-.orv:
-	mov eax, .orv - .bgn
+	test byte [eax], 0x3a                ; if(*ptr == ':')
+	;jne .err
+
+.obv:
+	mov eax, .obv - .bgn
 	mov [ebp+0], eax
 	; skip whitespace
+
 .oev:
 	mov eax, .oev - .bgn
 	mov [ebp+0], eax
 	; skip whitespace
 
+	test byte [eax], 0x2c                ; if(*ptr == ',')
+	je .obk
+	test byte [eax], 0x7d                ; if(*ptr == '}')
+	je .lns
+
 .lns:
 	; if(curns == rootns) jmp .finalize 
 	; else set previous node to the current namespace
 	; decrement the stack index and set the current namespace to the previous
+	sub esi, 1
 	; namespace on the stack
 	; advance the location pointer by 1
 	; jmp enter_namespace
@@ -214,3 +302,4 @@ skipws:
 
 .fin:
 
+.err:
