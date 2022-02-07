@@ -35,6 +35,11 @@ skipws_table dd                                \
 
 
 
+jasm_set_table db                              \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+
 [section .text]
 
 ;leaveNamespace:
@@ -80,6 +85,9 @@ BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
 OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
 
 
+JASM_SET_BUFFER        equ 1
+JASM_SET_ALLOC_FREE    equ 2
+
 
 
 @jasm_init@12:
@@ -95,6 +103,15 @@ OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
 	mov eax, 0x1
 	cpuid
 
+	add esp, 8                                ; fastcall stack cleanup
+	jmp [esp-8]
+
+
+@jasm_set@12:
+	jmp 
+
+.
+	
 	add esp, 8                                ; fastcall stack cleanup
 	jmp [esp-8]
 
