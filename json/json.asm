@@ -1,7 +1,8 @@
 
-global @jasm_init@12
+global @jasm_init@4
 global @jasm_parse@8
-
+global @jasm_set_var@12
+global @jasm_get_var@8
 global @jasm_rename_key@12
 
 
@@ -85,15 +86,16 @@ BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
 OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
 
 
-JASM_SET_BUFFER        equ 1
-JASM_SET_ALLOC_FREE    equ 2
+JASM_VAR_BUFFER        equ 1
+JASM_VAR_BUFSIZE       equ 4
+JASM_vAR_ALLOC         equ 2
+JASM_VAR_FREE          equ 3
 
 
 
-@jasm_init@12:
-	mov [ecx+ALLOC_OFFSET],       dword edx   ; alloc = edx
-	mov edx, [esp+4]                          ; get jasm_free_t off stack
-	mov [ecx+FREE_OFFSET],        dword edx   ; free = edx
+@jasm_init@4:
+	mov [ecx+ALLOC_OFFSET],       dword 0x0   ; alloc = edx
+	mov [ecx+FREE_OFFSET],        dword 0x0   ; free = edx
 	mov [ecx+PHASE_OFFSET],       dword 0x0
 	mov [ecx+STACKIDX_OFFSET],    dword 0x0
 	mov [ecx+LENGTH_OFFSET],      dword 0x0   ; zero the string length
@@ -103,17 +105,24 @@ JASM_SET_ALLOC_FREE    equ 2
 	mov eax, 0x1
 	cpuid
 
-	add esp, 8                                ; fastcall stack cleanup
-	jmp [esp-8]
+	add esp, 4                                ; fastcall stack cleanup
+	jmp [esp-4]
 
 
-@jasm_set@12:
-	jmp 
 
-.
+@jasm_set_var@12:
+	;jmp
+
 	
 	add esp, 8                                ; fastcall stack cleanup
 	jmp [esp-8]
+
+
+@jasm_get_var@8:
+
+	add esp, 4
+	jmp [esp-4]                               ; fastcall stack cleanup
+
 
 
 ; int __cdecl parser_load(state *, char *utf8, size_t utf8len);
@@ -224,6 +233,13 @@ skipws:
 	jmp eax                                   ; jump to phase address
 
 	;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
+
+	; strlen
+	;vpcmpeqb  ; compare the bytes
+	;vpmovmskb ; create mask of msb
+	;bsf       ; find bit set to 1
+	;jz        ; no '0' found, add vec size to length, progress pointer and try again
+	
 
 .sws:   ; skip whitespace
 	jmp eax

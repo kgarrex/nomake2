@@ -18,22 +18,40 @@ typedef struct _jasm
 	int length;         // +12
 	int lineno;         // +16
 	char stackidx;      // +20
+	char padding[3];
 	jasm_alloc_t alloc; // +24
 	jasm_free_t free;   // +28
 	void *ns_stack[80]; // +32
 } _jasm_t;
 
 
-int __fastcall jasm_init(
-	jasm_t *jasm,
-	jasm_alloc_t alloc,
-	jasm_free_t free
-);
+#define JASMCALL __fastcall
+
+
+/*
+ * Initialize the jasm library. Must be called before calling any other jasm procedure
+ */
+int JASMCALL jasm_init(jasm_t *jasm);
+
+
+/**
+ * Set a jasm public variable
+ */
+void JASMCALL jasm_set_var(jasm_t *, int id, void *value);
+
+
+/**
+ * Get a jasm public variable value
+ */
+void * JASMCALL jasm_get_Var(jasm_t *, int id);
+
+
 
 
 int __fastcall jasm_load_buf(jasm_t *jasm, char *utf8, int length);
 
 void __fastcall jasm_parse(jasm_t *jasm);
+
 
 //jasm_set_callbacks(
 
@@ -54,8 +72,9 @@ void __fastcall free(void *ptr)
 {
 }
 
-jasm_set(jasm_t *, JASM_SET_BUFFER, buf, buflen);
-jasm_set(jasm_t *, JASM_SET_CALLBACKS, t
+
+
+//jasm_set(jasm_t *, JASM_SET_CALLBACKS, t
 
 
 //void __fastcall jasm_find_key(jasm_node_t *
@@ -67,7 +86,7 @@ int __cdecl main(int argc, char **argv)
 
 	_jasm_t *j;
 
-	jasm_init(&jasm, alloc, 0);
+	jasm_init(&jasm);
 
 	j = (_jasm_t*)&jasm;
 
