@@ -1,9 +1,10 @@
 
-global @jasm_init@4
+global @jasm_init@8
 global @jasm_parse@8
 global @jasm_set_var@12
 global @jasm_get_var@8
 global @jasm_rename_key@12
+global @jasm_find_key@12
 
 
 ; 3 bit parser state values
@@ -38,6 +39,11 @@ skipws_table dd                                \
 
 jasm_set_table db                              \
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+;Prime Numbers
+;61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109,
+;113, 127, 131, 137, 139, 149, 151, 157, 163, 
 
 
 
@@ -76,6 +82,7 @@ MAX_NAMESPACE_LEVEL    equ 80
 
 JASM_MAX_SIZE          equ 512
 
+FOCUS_OFFSET           equ ROOT_OFFSET - 4
 ROOT_OFFSET            equ PHASE_OFFSET - 4
 PHASE_OFFSET           equ BUFFER_OFFSET - 4
 BUFFER_OFFSET          equ BUFSIZE_OFFSET - 4
@@ -98,7 +105,7 @@ JASM_VAR_FREE          equ 3
 
 
 
-@jasm_init@4:
+@jasm_init@8:
 	mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
 	mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
 	mov [ecx+PHASE_OFFSET],       dword 0x0

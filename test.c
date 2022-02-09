@@ -3,7 +3,7 @@
 
 typedef struct jasm{char _[512];} jasm_t;
 
-typedef struct jasm_node {char _[32];} jasm_node_t;
+//typedef struct jasm_node {char _[32];} jasm_node_t;
 
 
 typedef void *(__fastcall *jasm_alloc_t)(int size);
@@ -12,7 +12,8 @@ typedef void (__fastcall *jasm_free_t)(void *);
 
 typedef struct _jasm
 {
-	char pad1[160];
+	char pad1[156];
+	void *focus;
 	void *root;         // +0
 	int phase;          // +4
 	char *string;       // +8
@@ -26,13 +27,15 @@ typedef struct _jasm
 } _jasm_t;
 
 
+
+
 #define JASMCALL __fastcall
 
 
 /*
  * Initialize the jasm library. Must be called before calling any other jasm procedure
  */
-int JASMCALL jasm_init(jasm_t *jasm);
+int JASMCALL jasm_init(jasm_t *jasm, long size);
 
 
 /**
@@ -87,7 +90,7 @@ int __cdecl main(int argc, char **argv)
 
 	_jasm_t *j;
 
-	jasm_init(&jasm);
+	jasm_init(&jasm, sizeof(jasm_t));
 
 	j = (_jasm_t*)&jasm;
 
@@ -96,6 +99,14 @@ int __cdecl main(int argc, char **argv)
 	printf("Stack Index: %u\n", j->stackidx);
 	printf("LineNo: %u\n", j->lineno);
 	printf("Alloc: 0x%p | 0x%p\n", j->alloc, alloc);
+
+	
+	char *string = "\'$.\'u";
+	for(int i = 0; i < 4; i++)
+	{
+		char c = string[i];
+		printf("Char: %c\n", c);
+	}
 	return 1;
 }
 
