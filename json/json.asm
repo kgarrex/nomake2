@@ -73,14 +73,19 @@ jasm_set_table db                              \
 
 MAX_KEY_LENGTH         equ 31
 MAX_NAMESPACE_LEVEL    equ 80
-PHASE_OFFSET           equ 4
-NS_STACK_OFFSET        equ 32
-LINENO_OFFSET          equ 16 
-STACKIDX_OFFSET        equ 20
-ALLOC_OFFSET           equ 24
-FREE_OFFSET            equ 28
-STRING_OFFSET          equ 8
-LENGTH_OFFSET          equ 12
+
+JASM_MAX_SIZE          equ 512
+
+ROOT_OFFSET            equ PHASE_OFFSET - 4
+PHASE_OFFSET           equ BUFFER_OFFSET - 4
+BUFFER_OFFSET          equ BUFSIZE_OFFSET - 4
+BUFSIZE_OFFSET         equ LINENO_OFFSET - 4
+LINENO_OFFSET          equ STACKIDX_OFFSET - 4
+STACKIDX_OFFSET        equ PADDING2_OFFSET - 1
+PADDING2_OFFSET        equ ALLOC_PROC_OFFSET - 3
+ALLOC_PROC_OFFSET      equ FREE_PROC_OFFSET - 4
+FREE_PROC_OFFSET       equ NS_STACK_OFFSET - 4
+NS_STACK_OFFSET        equ JASM_MAX_SIZE-(MAX_NAMESPACE_LEVEL*4)
 
 BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
 OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
@@ -94,13 +99,13 @@ JASM_VAR_FREE          equ 3
 
 
 @jasm_init@4:
-	mov [ecx+ALLOC_OFFSET],       dword 0x0   ; alloc = edx
-	mov [ecx+FREE_OFFSET],        dword 0x0   ; free = edx
+	mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
+	mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
 	mov [ecx+PHASE_OFFSET],       dword 0x0
 	mov [ecx+STACKIDX_OFFSET],    dword 0x0
-	mov [ecx+LENGTH_OFFSET],      dword 0x0   ; zero the string length
+	mov [ecx+BUFSIZE_OFFSET],     dword 0x0   ; zero the string length
 	mov [ecx+LINENO_OFFSET],      dword 0x0
-	mov [ecx+STRING_OFFSET],      dword 0x0   ; zero the string
+	mov [ecx+BUFFER_OFFSET],      dword 0x0   ; zero the buffer * 
 
 	mov eax, 0x1
 	cpuid
@@ -110,10 +115,29 @@ JASM_VAR_FREE          equ 3
 
 
 
-@jasm_set_var@12:
-	;jmp
+SET_BUFFER  equ  @jasm_set_var@12.set_buffer - @jasm_set_var@12
 
-	
+table dw \
+SET_BUFFER, 0
+
+
+;***************************************************
+; ecx - jasm_t *
+; edx - id
+;
+;***************************************************
+@jasm_set_var@12:
+	mov eax, [esp+4]
+	mov edx, [table+edx*4]
+	add edx, @jasm_set_var@12
+	jmp edx 	
+
+.set_buffer:
+	mov [ecx+BUFFER_OFFSET], eax
+
+.set_bufsize:
+	mov [ecx+BUFSIZE_OFFSET], eax
+
 	add esp, 8                                ; fastcall stack cleanup
 	jmp [esp-8]
 
@@ -151,6 +175,21 @@ skipws:
 	;sub byte [reg], 1
 	;and [reg], 0x2f
 	;test reg, reg 
+
+
+
+;**********************************************************************
+; Calculate the length of a zero-terminated string
+;
+;**********************************************************************
+strlen:
+    vmovdqu  xmm1, [edi]
+    vpcmpeqb xmm1, xmm2, xmm3                                   ; compare the bytes
+    ;vpmovmskb ; create mask of msb
+    ;bsf       ; find bit set to 1
+    ;jz        ; no '0' found, add vec size to length, progress pointer and try again
+    add      edi, 16
+	
 
 
 
@@ -234,17 +273,13 @@ skipws:
 
 	;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
 
-	; strlen
-	;vpcmpeqb  ; compare the bytes
-	;vpmovmskb ; create mask of msb
-	;bsf       ; find bit set to 1
-	;jz        ; no '0' found, add vec size to length, progress pointer and try again
-	
 
 .sws:   ; skip whitespace
 	jmp eax
 
 .bgn:
+	; first, if bufsize is zero we assume buffer is a zero-terminated string
+	; we need to find string length
 	; if parser->phase == 0, start parsing from scratch
 	; skip white space
 	; check if first char start of array '[' or object '{'

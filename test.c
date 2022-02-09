@@ -12,13 +12,14 @@ typedef void (__fastcall *jasm_free_t)(void *);
 
 typedef struct _jasm
 {
+	char pad1[160];
 	void *root;         // +0
 	int phase;          // +4
 	char *string;       // +8
-	int length;         // +12
+	int bufsize;        // +12
 	int lineno;         // +16
 	char stackidx;      // +20
-	char padding[3];
+	char pad2[3];
 	jasm_alloc_t alloc; // +24
 	jasm_free_t free;   // +28
 	void *ns_stack[80]; // +32
@@ -43,7 +44,7 @@ void JASMCALL jasm_set_var(jasm_t *, int id, void *value);
 /**
  * Get a jasm public variable value
  */
-void * JASMCALL jasm_get_Var(jasm_t *, int id);
+void * JASMCALL jasm_get_var(jasm_t *, int id);
 
 
 
@@ -91,7 +92,7 @@ int __cdecl main(int argc, char **argv)
 	j = (_jasm_t*)&jasm;
 
 	printf("Phase: 0x%p\n", j->phase);
-	printf("Length: 0x%p\n", j->length);
+	printf("Length: 0x%p\n", j->bufsize);
 	printf("Stack Index: %u\n", j->stackidx);
 	printf("LineNo: %u\n", j->lineno);
 	printf("Alloc: 0x%p | 0x%p\n", j->alloc, alloc);
