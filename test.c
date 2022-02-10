@@ -1,7 +1,9 @@
 
 #include <stdio.h>
 
-typedef struct jasm{char _[512];} jasm_t;
+typedef struct _jasm32 {char _[512];} jasm32_t;
+
+typedef struct _jasm64 {char _[2048];} jasm64_t;
 
 //typedef struct jasm_node {char _[32];} jasm_node_t;
 
@@ -12,7 +14,8 @@ typedef void (__fastcall *jasm_free_t)(void *);
 
 typedef struct _jasm
 {
-	char pad1[156];
+	char pad1[152];
+	int nbuckets;
 	void *focus;
 	void *root;         // +0
 	int phase;          // +4
@@ -35,33 +38,36 @@ typedef struct _jasm
 /*
  * Initialize the jasm library. Must be called before calling any other jasm procedure
  */
-int JASMCALL jasm_init(jasm_t *jasm, long size);
+int JASMCALL jasm_init(void *jasm, long size);
 
 
 /**
  * Set a jasm public variable
  */
-void JASMCALL jasm_set_var(jasm_t *, int id, void *value);
+void JASMCALL jasm_set_var(void *jasm, int id, void *value);
 
 
 /**
  * Get a jasm public variable value
  */
-void * JASMCALL jasm_get_var(jasm_t *, int id);
+void * JASMCALL jasm_get_var(void *jasm, int id);
 
 
 
 
-int __fastcall jasm_load_buf(jasm_t *jasm, char *utf8, int length);
+int __fastcall jasm_load_buf(void *jasm, char *utf8, int length);
 
-void __fastcall jasm_parse(jasm_t *jasm);
+void __fastcall jasm_parse(void *jasm);
+
+
+//char * JASMCALL jasm_:wa
 
 
 //jasm_set_callbacks(
 
 
 static char buffer[4096];
-jasm_t jasm;
+jasm32_t jasm;
 
 void * __fastcall alloc(int size)
 {
@@ -90,7 +96,7 @@ int __cdecl main(int argc, char **argv)
 
 	_jasm_t *j;
 
-	jasm_init(&jasm, sizeof(jasm_t));
+	jasm_init(&jasm, sizeof(jasm));
 
 	j = (_jasm_t*)&jasm;
 

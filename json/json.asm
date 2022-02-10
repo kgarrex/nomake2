@@ -47,6 +47,16 @@ jasm_set_table db                              \
 
 
 
+table dw                                         \
+@jasm_set_var@12.set_buffer - @jasm_set_var@12,  \
+@jasm_set_var@12.set_bufsize - @jasm_set_var@12, \
+@jasm_set_var@12.set_alloc - @jasm_set_var@12,   \
+@jasm_set_var@12.set_free - @jasm_set_var@12,    \
+
+table_size dd $-table
+
+
+
 [section .text]
 
 ;leaveNamespace:
@@ -82,6 +92,7 @@ MAX_NAMESPACE_LEVEL    equ 80
 
 JASM_MAX_SIZE          equ 512
 
+NBUCKETS_OFFSET        equ FOCUS_OFFSET - 4
 FOCUS_OFFSET           equ ROOT_OFFSET - 4
 ROOT_OFFSET            equ PHASE_OFFSET - 4
 PHASE_OFFSET           equ BUFFER_OFFSET - 4
@@ -106,6 +117,8 @@ JASM_VAR_FREE          equ 3
 
 
 @jasm_init@8:
+	;test edx, 0x200 
+	;test edx, 0x800
 	mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
 	mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
 	mov [ecx+PHASE_OFFSET],       dword 0x0
@@ -113,6 +126,7 @@ JASM_VAR_FREE          equ 3
 	mov [ecx+BUFSIZE_OFFSET],     dword 0x0   ; zero the string length
 	mov [ecx+LINENO_OFFSET],      dword 0x0
 	mov [ecx+BUFFER_OFFSET],      dword 0x0   ; zero the buffer * 
+	mov [ecx+FOCUS_OFFSET],       dword 0x0
 
 	mov eax, 0x1
 	cpuid
@@ -122,10 +136,6 @@ JASM_VAR_FREE          equ 3
 
 
 
-SET_BUFFER  equ  @jasm_set_var@12.set_buffer - @jasm_set_var@12
-
-table dw \
-SET_BUFFER, 0
 
 
 ;***************************************************
@@ -139,11 +149,17 @@ SET_BUFFER, 0
 	add edx, @jasm_set_var@12
 	jmp edx 	
 
-.set_buffer:
+	.set_buffer:
 	mov [ecx+BUFFER_OFFSET], eax
 
-.set_bufsize:
+	.set_bufsize:
 	mov [ecx+BUFSIZE_OFFSET], eax
+
+	.set_alloc:
+	mov [ecx+ALLOC_PROC_OFFSET], eax
+
+	.set_free:
+	mov [ecx+FREE_PROC_OFFSET], eax
 
 	add esp, 8                                ; fastcall stack cleanup
 	jmp [esp-8]
