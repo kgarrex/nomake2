@@ -37,43 +37,9 @@ skipws_table dd                                \
 
 
 
-jasm_set_table db                              \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-
-
-;Prime Numbers
-;61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109,
-;113, 127, 131, 137, 139, 149, 151, 157, 163, 
-
-
-
-table dw                                         \
-@jasm_set_var@12.set_buffer - @jasm_set_var@12,  \
-@jasm_set_var@12.set_bufsize - @jasm_set_var@12, \
-@jasm_set_var@12.set_alloc - @jasm_set_var@12,   \
-@jasm_set_var@12.set_free - @jasm_set_var@12,    \
-
-table_size dd $-table
-
 
 
 [section .text]
-
-;leaveNamespace:
-;
-; 
-;
-; struct parser_state {
-; 	word phase
-;	byte *utf8_json_string
-;	size_t length
-;	size_t lineno
-;	char stack_index
-;	void *ns_stack[64]
-; };
-;
-;
-
 
 
 
@@ -88,11 +54,17 @@ table_size dd $-table
 ; free         : []
 
 MAX_KEY_LENGTH         equ 31
-MAX_NAMESPACE_LEVEL    equ 80
 
-JASM_MAX_SIZE          equ 512
+; %if 32bit 512
+NUM_HASH_SLOTS         equ 79
+NUM_NAMESPACE_LEVEL    equ 32 
 
-NBUCKETS_OFFSET        equ FOCUS_OFFSET - 4
+
+JASM_MAX_SIZE          equ 512  ; This is a compile time constant!!!
+
+SLOTS_OFFSET           equ PADDING1_OFFSET-(NUM_HASH_SLOTS * 4)
+PADDING1_OFFSET        equ RSLTPTR_OFFSET - 28 
+RSLTPTR_OFFSET         equ FOCUS_OFFSET - 4
 FOCUS_OFFSET           equ ROOT_OFFSET - 4
 ROOT_OFFSET            equ PHASE_OFFSET - 4
 PHASE_OFFSET           equ BUFFER_OFFSET - 4
@@ -100,72 +72,132 @@ BUFFER_OFFSET          equ BUFSIZE_OFFSET - 4
 BUFSIZE_OFFSET         equ LINENO_OFFSET - 4
 LINENO_OFFSET          equ STACKIDX_OFFSET - 4
 STACKIDX_OFFSET        equ PADDING2_OFFSET - 1
-PADDING2_OFFSET        equ ALLOC_PROC_OFFSET - 3
+PADDING2_OFFSET        equ PARSEFLAGS_OFFSET - 1
+PARSEFLAGS_OFFSET      equ RESULT_OFFSET - 1
+RESULT_OFFSET          equ ALLOC_PROC_OFFSET - 1
 ALLOC_PROC_OFFSET      equ FREE_PROC_OFFSET - 4
 FREE_PROC_OFFSET       equ NS_STACK_OFFSET - 4
-NS_STACK_OFFSET        equ JASM_MAX_SIZE-(MAX_NAMESPACE_LEVEL*4)
+NS_STACK_OFFSET        equ JASM_MAX_SIZE-(NUM_NAMESPACE_LEVEL*4)
+
 
 BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
 OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
 
 
-JASM_VAR_BUFFER        equ 1
-JASM_VAR_BUFSIZE       equ 4
-JASM_vAR_ALLOC         equ 2
-JASM_VAR_FREE          equ 3
+JASM_VAR_BUFFER         equ 0
+JASM_vAR_ALLOC          equ 1
+JASM_VAR_FREE           equ 2
+JASM_VAR_BUFSIZE        equ 3
+JASM_VAR_RESULT_POINTER equ 4
+JASM_VAR_PARSEFLAGS     equ 5
+
+
+JASM_PARSE_FLAG_PRESERVE_KEYS  equ 0x1    ; allow storage of field names, use mainly to parse and write
+JASM_PARSE_FLAG_PRESERVE_CASE  equ 0x2    ; preserve the casing of keys
+JASM_PARSE_FLAG_STRICT_KEYS    equ 0x4    ; keys are only allow alphanumeric and _ chars
+JASM_PARSE_FLAG_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
 
 
 
 @jasm_init@8:
-	;test edx, 0x200 
-	;test edx, 0x800
-	mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
-	mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
-	mov [ecx+PHASE_OFFSET],       dword 0x0
-	mov [ecx+STACKIDX_OFFSET],    dword 0x0
-	mov [ecx+BUFSIZE_OFFSET],     dword 0x0   ; zero the string length
-	mov [ecx+LINENO_OFFSET],      dword 0x0
-	mov [ecx+BUFFER_OFFSET],      dword 0x0   ; zero the buffer * 
-	mov [ecx+FOCUS_OFFSET],       dword 0x0
+    ;test edx, 0x200 
+    ;test edx, 0x800
+    mov [ecx+PARSEFLAGS_OFFSET], dword 0x0
+    lea eax, [ecx+RESULT_OFFSET]
+    mov [ecx+RSLTPTR_OFFSET], eax
+    mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
+    mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
+    mov [ecx+PHASE_OFFSET],       dword 0x0
+    mov [ecx+STACKIDX_OFFSET],    dword 0x0
+    mov [ecx+BUFSIZE_OFFSET],     dword 0x0   ; zero the string length
+    mov [ecx+LINENO_OFFSET],      dword 0x0
+    mov [ecx+BUFFER_OFFSET],      dword 0x0   ; zero the buffer * 
+    mov [ecx+FOCUS_OFFSET],       dword 0x0
 
-	mov eax, 0x1
-	cpuid
+    mov eax, 0x1
+    cpuid
 
-	add esp, 4                                ; fastcall stack cleanup
-	jmp [esp-4]
-
-
+    add esp, 4                                ; fastcall stack cleanup
+    jmp [esp-4]
 
 
+
+
+
+[section .data]
+
+table dw                                        \
+@jasm_set_var@12.buffer - @jasm_set_var@12,     \
+@jasm_set_var@12.bufsize - @jasm_set_var@12,    \
+@jasm_set_var@12.alloc - @jasm_set_var@12,      \
+@jasm_set_var@12.free - @jasm_set_var@12,       \
+@jasm_set_var@12.rsltptr - @jasm_set_var@12,    \
+@jasm_set_var@12.parseflags - @jasm_set_var@12, \
+
+table_size dd $-table
+
+
+jasm_set_table db                              \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+[section .text]
 
 ;***************************************************
 ; ecx - jasm_t *
-; edx - id
-;
+; edx - varid
+; [esp+4] - value
 ;***************************************************
 @jasm_set_var@12:
-	mov eax, [esp+4]
-	mov edx, [table+edx*4]
-	add edx, @jasm_set_var@12
-	jmp edx 	
+    mov eax, [esp+4]
+    mov edx, [table+edx*4]
+    add edx, @jasm_set_var@12
+    jmp edx 	
 
-	.set_buffer:
-	mov [ecx+BUFFER_OFFSET], eax
+    .buffer:
+    mov [ecx+BUFFER_OFFSET], eax
+    jmp .exit
 
-	.set_bufsize:
-	mov [ecx+BUFSIZE_OFFSET], eax
+    .bufsize:
+    mov [ecx+BUFSIZE_OFFSET], eax
+    jmp .exit
 
-	.set_alloc:
-	mov [ecx+ALLOC_PROC_OFFSET], eax
+    .alloc:
+    mov [ecx+ALLOC_PROC_OFFSET], eax
+    jmp .exit
 
-	.set_free:
-	mov [ecx+FREE_PROC_OFFSET], eax
+    .free:
+    mov [ecx+FREE_PROC_OFFSET], eax
+    jmp .exit
 
-	add esp, 8                                ; fastcall stack cleanup
-	jmp [esp-8]
+    .rsltptr:
+    test eax, 0
+    jnz .rsltptr_nz
+    lea eax, [ecx+RESULT_OFFSET]
+	.rsltptr_nz:
+        mov [ecx+RSLTPTR_OFFSET], eax
+    jmp .exit
+
+    .parseflags:
+    mov [ecx+PARSEFLAGS_OFFSET], eax
+    jmp .exit
 
 
-@jasm_get_var@8:
+    .exit:
+    add esp, 8                                ; fastcall stack cleanup
+    jmp [esp-8]
+
+
+
+;*****************************************************
+; ecx = jasm_t *
+; edx = varid
+; [esp+4] = *value
+;*****************************************************
+@jasm_get_var@12:
+	.get_buffer:
+	.get_busize:
+	.get_alloc:
 
 	add esp, 4
 	jmp [esp-4]                               ; fastcall stack cleanup

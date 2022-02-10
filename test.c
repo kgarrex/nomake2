@@ -1,33 +1,47 @@
 
 #include <stdio.h>
 
-typedef struct _jasm32 {char _[512];} jasm32_t;
+typedef struct _jasm {char _[512];} jasm_t;
 
-typedef struct _jasm64 {char _[2048];} jasm64_t;
 
 //typedef struct jasm_node {char _[32];} jasm_node_t;
 
 
 typedef void *(__fastcall *jasm_alloc_t)(int size);
-typedef void (__fastcall *jasm_free_t)(void *);
+typedef void (__fastcall *jasm_free_t)(jasm_t *);
+typedef void (__fastcall *jasm_recv_t)(jasm_t *);
+typedef void (__fastcall *jasm_send_t)(jasm_t *);
 
 
-typedef struct _jasm
+typedef struct _jasm512
 {
-	char pad1[152];
-	int nbuckets;
+	void *slots[0x4f];    // 79 slots
+	char pad1[28];
+	unsigned char *prslt; // the result pointer
 	void *focus;
-	void *root;         // +0
-	int phase;          // +4
-	char *string;       // +8
-	int bufsize;        // +12
-	int lineno;         // +16
-	char stackidx;      // +20
-	char pad2[3];
-	jasm_alloc_t alloc; // +24
-	jasm_free_t free;   // +28
-	void *ns_stack[80]; // +32
-} _jasm_t;
+	void *root;           // +0
+	int phase;            // +4
+	char *string;         // +8
+	int bufsize;          // +12
+	int lineno;           // +16
+	char stackidx;        // +20
+	char pad2[1];
+	char parseflg;
+	unsigned char result;
+	jasm_alloc_t alloc;   // +24
+	jasm_free_t free;     // +28
+	void *ns_stack[0x20]; // 32 levels
+} _jasm512_t;
+
+
+//Prime Numbers
+//13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59,
+//61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109,
+//113, 127, 131, 137, 139, 149, 151, 157, 163, 
+
+// 32bit 512: slots=79, levels=32, other=18
+// 64bit 512: slots=29, levels=18, other=17
+
 
 
 
@@ -67,7 +81,7 @@ void __fastcall jasm_parse(void *jasm);
 
 
 static char buffer[4096];
-jasm32_t jasm;
+jasm_t jasm;
 
 void * __fastcall alloc(int size)
 {
@@ -94,17 +108,18 @@ int __cdecl main(int argc, char **argv)
 {
 	printf("Hello World\n");
 
-	_jasm_t *j;
+	_jasm512_t *j;
 
 	jasm_init(&jasm, sizeof(jasm));
 
-	j = (_jasm_t*)&jasm;
+	j = (_jasm512_t*)&jasm;
 
 	printf("Phase: 0x%p\n", j->phase);
 	printf("Length: 0x%p\n", j->bufsize);
 	printf("Stack Index: %u\n", j->stackidx);
 	printf("LineNo: %u\n", j->lineno);
 	printf("Alloc: 0x%p | 0x%p\n", j->alloc, alloc);
+	printf("prslt: 0x%p == 0x%p\n", j->prslt, &j->result);
 
 	
 	char *string = "\'$.\'u";
