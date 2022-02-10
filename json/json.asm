@@ -72,8 +72,8 @@ BUFFER_OFFSET          equ BUFSIZE_OFFSET - 4
 BUFSIZE_OFFSET         equ LINENO_OFFSET - 4
 LINENO_OFFSET          equ STACKIDX_OFFSET - 4
 STACKIDX_OFFSET        equ PADDING2_OFFSET - 1
-PADDING2_OFFSET        equ PARSEFLAGS_OFFSET - 1
-PARSEFLAGS_OFFSET      equ RESULT_OFFSET - 1
+PADDING2_OFFSET        equ FLAGS_OFFSET - 1
+FLAGS_OFFSET           equ RESULT_OFFSET - 1
 RESULT_OFFSET          equ ALLOC_PROC_OFFSET - 1
 ALLOC_PROC_OFFSET      equ FREE_PROC_OFFSET - 4
 FREE_PROC_OFFSET       equ NS_STACK_OFFSET - 4
@@ -89,20 +89,21 @@ JASM_vAR_ALLOC          equ 1
 JASM_VAR_FREE           equ 2
 JASM_VAR_BUFSIZE        equ 3
 JASM_VAR_RESULT_POINTER equ 4
-JASM_VAR_PARSEFLAGS     equ 5
+JASM_VAR_FLAGS          equ 5
 
 
 JASM_PARSE_FLAG_PRESERVE_KEYS  equ 0x1    ; allow storage of field names, use mainly to parse and write
 JASM_PARSE_FLAG_PRESERVE_CASE  equ 0x2    ; preserve the casing of keys
 JASM_PARSE_FLAG_STRICT_KEYS    equ 0x4    ; keys are only allow alphanumeric and _ chars
 JASM_PARSE_FLAG_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
+JASM_PARSE_FLAG_ALLOW_DUP_KEYS equ 0x10   ; allow duplicate keys in an object; TODO optimize or not?
 
 
 
 @jasm_init@8:
     ;test edx, 0x200 
     ;test edx, 0x800
-    mov [ecx+PARSEFLAGS_OFFSET], dword 0x0
+    mov [ecx+FLAGS_OFFSET],       byte 0x0010 ; set parse flags
     lea eax, [ecx+RESULT_OFFSET]
     mov [ecx+RSLTPTR_OFFSET], eax
     mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
@@ -123,22 +124,17 @@ JASM_PARSE_FLAG_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
 
 
 
+[section .rdata]
 
-[section .data]
-
-table dw                                        \
-@jasm_set_var@12.buffer - @jasm_set_var@12,     \
-@jasm_set_var@12.bufsize - @jasm_set_var@12,    \
-@jasm_set_var@12.alloc - @jasm_set_var@12,      \
-@jasm_set_var@12.free - @jasm_set_var@12,       \
-@jasm_set_var@12.rsltptr - @jasm_set_var@12,    \
-@jasm_set_var@12.parseflags - @jasm_set_var@12, \
+table: dw \
+    @jasm_set_var@12.buffer - @jasm_set_var@12,     \
+    @jasm_set_var@12.bufsize - @jasm_set_var@12,    \
+    @jasm_set_var@12.alloc - @jasm_set_var@12,      \
+    @jasm_set_var@12.free - @jasm_set_var@12,       \
+    @jasm_set_var@12.rsltptr - @jasm_set_var@12,    \
+    @jasm_set_var@12.flags - @jasm_set_var@12, \
 
 table_size dd $-table
-
-
-jasm_set_table db                              \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 [section .text]
@@ -172,14 +168,14 @@ jasm_set_table db                              \
 
     .rsltptr:
     test eax, 0
-    jnz .rsltptr_nz
+    jnz short .rsltptr_nz ; TODO get size of lea instruction and just jump by that
     lea eax, [ecx+RESULT_OFFSET]
 	.rsltptr_nz:
         mov [ecx+RSLTPTR_OFFSET], eax
     jmp .exit
 
-    .parseflags:
-    mov [ecx+PARSEFLAGS_OFFSET], eax
+    .flags:
+    mov [ecx+FLAGS_OFFSET], eax
     jmp .exit
 
 
@@ -188,6 +184,17 @@ jasm_set_table db                              \
     jmp [esp-8]
 
 
+
+
+
+[section .rdata]
+
+jasm_set_table db                              \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+
+[section .text]
 
 ;*****************************************************
 ; ecx = jasm_t *

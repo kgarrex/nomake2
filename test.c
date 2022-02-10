@@ -12,6 +12,14 @@ typedef void (__fastcall *jasm_free_t)(jasm_t *);
 typedef void (__fastcall *jasm_recv_t)(jasm_t *);
 typedef void (__fastcall *jasm_send_t)(jasm_t *);
 
+typedef struct _jasm_atom
+{
+	int hash;
+	int size;
+	void *next;
+	void *string;
+} jasm_atom_t;
+
 
 typedef struct _jasm512
 {
@@ -26,7 +34,7 @@ typedef struct _jasm512
 	int lineno;           // +16
 	char stackidx;        // +20
 	char pad2[1];
-	char parseflg;
+	char flags;
 	unsigned char result;
 	jasm_alloc_t alloc;   // +24
 	jasm_free_t free;     // +28
