@@ -5,6 +5,21 @@ global @jasm_set_var@12
 global @jasm_get_var@8
 global @jasm_rename_key@12
 global @jasm_find_key@12
+global @jasm_get_value@12
+global @jasm_value_type@4
+
+
+
+; bytes  | bits | type  |  .data |  .bss
+; -------+------+-------+-----------------
+;  1     | 8    | byte  | db     | resb
+;  2     | 16   | word  | dw     | resw
+;  4     | 32   | dword | dd     | resd
+;  8     | 64   | qword | dq     | resq
+;  10    | 80   | tword | dt     | rest
+;  16    | 128  | oword | do/ddq | reso/resdq
+;  32    | 256  | yword | dy     | resy
+;  64    | 512  | zword | dz     | resz
 
 
 ; 3 bit parser state values
@@ -92,11 +107,11 @@ JASM_VAR_RESULT_POINTER equ 4
 JASM_VAR_FLAGS          equ 5
 
 
-JASM_PARSE_FLAG_PRESERVE_KEYS  equ 0x1    ; allow storage of field names, use mainly to parse and write
-JASM_PARSE_FLAG_PRESERVE_CASE  equ 0x2    ; preserve the casing of keys
-JASM_PARSE_FLAG_STRICT_KEYS    equ 0x4    ; keys are only allow alphanumeric and _ chars
-JASM_PARSE_FLAG_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
-JASM_PARSE_FLAG_ALLOW_DUP_KEYS equ 0x10   ; allow duplicate keys in an object; TODO optimize or not?
+JASM_FLAG_PARSE_PRESERVE_KEYS  equ 0x1    ; allow storage of field names, use mainly to parse and write
+JASM_FLAG_PARSE_PRESERVE_CASE  equ 0x2    ; preserve the casing of keys
+JASM_FLAG_PARSE_STRICT_KEYS    equ 0x4    ; keys are only allow alphanumeric and _ chars
+JASM_FLAG_PARSE_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
+JASM_FLAG_PARSE_ALLOW_DUP_KEYS equ 0x10   ; allow duplicate keys in an object; TODO optimize or not?
 
 
 
@@ -211,13 +226,7 @@ jasm_set_table db                              \
 
 
 
-; int __cdecl parser_load(state *, char *utf8, size_t utf8len);
-_jasm_load_buf:
-	; set the json string to parse and length
-	; set the namespace stack index to 0 (xor idx, idx)
-	; set the line number to 1
-	; set the phase to 0
-	jmp [esp] ; return
+
 
 ;*******************************************************************
 ; skipws - Skip the white space in a json document
@@ -240,14 +249,18 @@ skipws:
 
 
 
+
+[section .text]
+
 ;**********************************************************************
 ; Calculate the length of a zero-terminated string
 ;
 ;**********************************************************************
 strlen:
-    vmovdqu  xmm1, [edi]
-    vpcmpeqb xmm1, xmm2, xmm3                                   ; compare the bytes
-    ;vpmovmskb ; create mask of msb
+    .mem do `\x0`,
+    vmovdqu  xmm1, oword [.mem]
+    vpcmpeqb xmm0, xmm1, oword[edi]                                  ; compare the bytes
+    vpmovmskb eax, xmm0
     ;bsf       ; find bit set to 1
     ;jz        ; no '0' found, add vec size to length, progress pointer and try again
     add      edi, 16

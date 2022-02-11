@@ -30,9 +30,9 @@ typedef struct _jasm512
 	void *root;           // +0
 	int phase;            // +4
 	char *string;         // +8
-	int bufsize;          // +12
-	int lineno;           // +16
-	char stackidx;        // +20
+	int bufsize;             // +12
+	int lineno;              // +16
+	unsigned char stackidx;        // +20
 	char pad2[1];
 	char flags;
 	unsigned char result;
@@ -136,6 +136,10 @@ int __cdecl main(int argc, char **argv)
 		char c = string[i];
 		printf("Char: %c\n", c);
 	}
+
+	printf("Long Multiplication: %u\n", (1 << 5));
+
+
 	return 1;
 }
 
