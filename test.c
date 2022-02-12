@@ -1,45 +1,30 @@
 
 #include <stdio.h>
 
-typedef struct _jasm {char _[512];} jasm_t;
+#include "json\jasm.h"
 
+//#include "test_json.h"
 
-//typedef struct jasm_node {char _[32];} jasm_node_t;
+char *test_string =
+"qndtefupsphjvnjtaxokkzdyhduoyxuvrpdymnqhnyntcgmffrvebuon"
+"fsduapngoixgfcjxzdgoeutkecamkwhmswuykbqiqutcvitazrjhfedmu"
+"fmtpoqpjxmhgqdvjedgviagsipbmysucfazikqdloceikrwuckpvaujne"
+"zidmjtknjpyfvfeskryofdrlsyzxtgifdrtocusuctmmkafvqahcmdvuz"
+"mcyrsgseywvujmdqlwawbczuhfejktrqiezzduaiqwflktgejuukjyjpy"
+"rcehunjnnnnvycxdfpvgsuhlobvbcrxzqhtycmvknyeyqzolubzidqxur"
+"puaszpgzydufyuslrtgiixmfjtdgpmpereqkyutuatzxovbbhiedakufu"
+"dfsfiuuuuzkfheikynrwldjhbxpnwxkkspqnxgaqddbgrkmigcwyimzrn"
+"gxvvtspdmwhtwkpvnqbmakrdoxtbpipllidpwvottkyufjjekozbyzfuu"
+"nvwkitlzagshpobusmritsosreguoetouqnwkhijlrhegilmpmpspeogu"
+"fbbwnjmolbliqeektlrjqqtdzdalpbqypuptilazpildsxpixtjhmrlym"
+"gvjmfnrgnhswrpoketimoeaiyyupkwofjxspupnfqaaaskufqimiwztaw"
+"xwimfoitdhjaekbybivnipeyuytgeowihhdkaqcszbyobtqsofjlwkahm"
+"qastfvftpdxtiknfehpygtdqslrgzqlzzbxnwazjzyphkmdkphzenghru"
+"cxtkcbsoetjyhgzqkyajayyzjxyogwducnftipuyaovjcvyiitxvffzep"
+"vpsaeaalachkxfauzjujgiwqgqktgsokwamiajojbmvxmdseeqgridvoh"
+"issqdoowjmdwwopvletwtlbwdirlneggxofrhwvwgbuuktmiyliasjokx"
+"abjrzosxfrcpohlhyvphqehvddllmjyofvutvhxpltzjzfzmmrkbjkgu";
 
-
-typedef void *(__fastcall *jasm_alloc_t)(int size);
-typedef void (__fastcall *jasm_free_t)(jasm_t *);
-typedef void (__fastcall *jasm_recv_t)(jasm_t *);
-typedef void (__fastcall *jasm_send_t)(jasm_t *);
-
-typedef struct _jasm_atom
-{
-	int hash;
-	int size;
-	void *next;
-	void *string;
-} jasm_atom_t;
-
-
-typedef struct _jasm512
-{
-	void *slots[0x4f];    // 79 slots
-	char pad1[28];
-	unsigned char *prslt; // the result pointer
-	void *focus;
-	void *root;           // +0
-	int phase;            // +4
-	char *string;         // +8
-	int bufsize;             // +12
-	int lineno;              // +16
-	unsigned char stackidx;        // +20
-	char pad2[1];
-	char flags;
-	unsigned char result;
-	jasm_alloc_t alloc;   // +24
-	jasm_free_t free;     // +28
-	void *ns_stack[0x20]; // 32 levels
-} _jasm512_t;
 
 
 //Prime Numbers
@@ -50,36 +35,6 @@ typedef struct _jasm512
 // 32bit 512: slots=79, levels=32, other=18
 // 64bit 512: slots=29, levels=18, other=17
 
-
-
-
-
-#define JASMCALL __fastcall
-
-
-/*
- * Initialize the jasm library. Must be called before calling any other jasm procedure
- */
-int JASMCALL jasm_init(void *jasm, long size);
-
-
-/**
- * Set a jasm public variable
- */
-void JASMCALL jasm_set_var(void *jasm, int id, void *value);
-
-
-/**
- * Get a jasm public variable value
- */
-void * JASMCALL jasm_get_var(void *jasm, int id);
-
-
-
-
-int __fastcall jasm_load_buf(void *jasm, char *utf8, int length);
-
-void __fastcall jasm_parse(void *jasm);
 
 
 //char * JASMCALL jasm_:wa
@@ -118,7 +73,7 @@ int __cdecl main(int argc, char **argv)
 
 	_jasm512_t *j;
 
-	jasm_init(&jasm, sizeof(jasm));
+	jasm_init(&jasm);
 
 	j = (_jasm512_t*)&jasm;
 
@@ -138,6 +93,9 @@ int __cdecl main(int argc, char **argv)
 	}
 
 	printf("Long Multiplication: %u\n", (1 << 5));
+
+	int len = jasm_strlen(test_string);
+	printf("len %u\n", len);
 
 
 	return 1;

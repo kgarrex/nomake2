@@ -1,13 +1,4 @@
 
-global @jasm_init@8
-global @jasm_parse@8
-global @jasm_set_var@12
-global @jasm_get_var@8
-global @jasm_rename_key@12
-global @jasm_find_key@12
-global @jasm_get_value@12
-global @jasm_value_type@4
-
 
 
 ; bytes  | bits | type  |  .data |  .bss
@@ -44,10 +35,22 @@ endstruc
 [section .data]
 
 
-skipws_table dd                                \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 \
+char_table db                                   \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
@@ -85,10 +88,9 @@ ROOT_OFFSET            equ PHASE_OFFSET - 4
 PHASE_OFFSET           equ BUFFER_OFFSET - 4
 BUFFER_OFFSET          equ BUFSIZE_OFFSET - 4
 BUFSIZE_OFFSET         equ LINENO_OFFSET - 4
-LINENO_OFFSET          equ STACKIDX_OFFSET - 4
-STACKIDX_OFFSET        equ PADDING2_OFFSET - 1
-PADDING2_OFFSET        equ FLAGS_OFFSET - 1
-FLAGS_OFFSET           equ RESULT_OFFSET - 1
+LINENO_OFFSET          equ FLAGS_OFFSET - 4
+FLAGS_OFFSET           equ STACKIDX_OFFSET - 2
+STACKIDX_OFFSET        equ RESULT_OFFSET - 1
 RESULT_OFFSET          equ ALLOC_PROC_OFFSET - 1
 ALLOC_PROC_OFFSET      equ FREE_PROC_OFFSET - 4
 FREE_PROC_OFFSET       equ NS_STACK_OFFSET - 4
@@ -107,24 +109,79 @@ JASM_VAR_RESULT_POINTER equ 4
 JASM_VAR_FLAGS          equ 5
 
 
-JASM_FLAG_PARSE_PRESERVE_KEYS  equ 0x1    ; allow storage of field names, use mainly to parse and write
-JASM_FLAG_PARSE_PRESERVE_CASE  equ 0x2    ; preserve the casing of keys
-JASM_FLAG_PARSE_STRICT_KEYS    equ 0x4    ; keys are only allow alphanumeric and _ chars
-JASM_FLAG_PARSE_NUM_NOTATIONS  equ 0x8    ; allow hex, octal and binary numbers
-JASM_FLAG_PARSE_ALLOW_DUP_KEYS equ 0x10   ; allow duplicate keys in an object; TODO optimize or not?
+JASM_FLAG_PARSE_PRESERVE_KEYS  equ 0x01    ; allow storage of field names, use mainly to parse and write
+JASM_FLAG_PARSE_PRESERVE_CASE  equ 0x02    ; preserve the casing of keys
+JASM_FLAG_PARSE_STRICT_KEYS    equ 0x04    ; keys are only allow alphanumeric and _ chars
+JASM_FLAG_PARSE_NUM_NOTATIONS  equ 0x08    ; allow hex, octal and binary numbers
+JASM_FLAG_PARSE_NO_DUP_KEYS    equ 0x10    ; no duplicate keys in an object; TODO optimize or not?
 
 
 
-@jasm_init@8:
+
+;**********************************************************************
+; Calculate the length of a zero-terminated string
+;
+; edi = char *str
+;
+;**********************************************************************
+@jasm_strlen@4:
+    push edi ;temp
+    mov edi, ecx
+    vpxor ymm1, ymm1
+    ;mov ecx, edi
+    .loop:
+    vpcmpeqb ymm0, ymm1, yword [ecx]              ; compare the bytes
+    vpmovmskb eax, ymm0
+    bsf eax, eax
+    jnz .exit
+    add ecx, 32 
+    jmp .loop
+    .exit:
+    sub ecx, edi
+    ;add ecx, eax
+    add eax, ecx ;temp
+    pop edi ;temp
+    add esp, 4
+    jmp [esp-4]
+
+
+
+
+
+
+;-------- PUBLIC API ----------------
+
+global @jasm_init@4
+global @jasm_parse@8
+global @jasm_set_var@12
+global @jasm_get_var@8
+global @jasm_rename_key@12
+global @jasm_find_key@12
+global @jasm_get_value@12
+global @jasm_set_value@12
+global @jasm_add_value@4
+global @jasm_value_type@4
+global @jasm_strlen@4
+
+
+
+
+;**********************************************************************
+;
+; jasm_init(jasm_t *) - Initialize the jasm library 
+; ecx = jasm_t *
+;
+;**********************************************************************
+@jasm_init@4:
     ;test edx, 0x200 
     ;test edx, 0x800
-    mov [ecx+FLAGS_OFFSET],       byte 0x0010 ; set parse flags
+    mov [ecx+FLAGS_OFFSET],        word 0x0 ; set flags
     lea eax, [ecx+RESULT_OFFSET]
     mov [ecx+RSLTPTR_OFFSET], eax
     mov [ecx+ALLOC_PROC_OFFSET],  dword 0x0   ; alloc = edx
     mov [ecx+FREE_PROC_OFFSET],   dword 0x0   ; free = edx
     mov [ecx+PHASE_OFFSET],       dword 0x0
-    mov [ecx+STACKIDX_OFFSET],    dword 0x0
+    mov [ecx+STACKIDX_OFFSET],    dword 0x1
     mov [ecx+BUFSIZE_OFFSET],     dword 0x0   ; zero the string length
     mov [ecx+LINENO_OFFSET],      dword 0x0
     mov [ecx+BUFFER_OFFSET],      dword 0x0   ; zero the buffer * 
@@ -139,15 +196,18 @@ JASM_FLAG_PARSE_ALLOW_DUP_KEYS equ 0x10   ; allow duplicate keys in an object; T
 
 
 
+
+
+
 [section .rdata]
 
 table: dw \
-    @jasm_set_var@12.buffer - @jasm_set_var@12,     \
-    @jasm_set_var@12.bufsize - @jasm_set_var@12,    \
-    @jasm_set_var@12.alloc - @jasm_set_var@12,      \
-    @jasm_set_var@12.free - @jasm_set_var@12,       \
-    @jasm_set_var@12.rsltptr - @jasm_set_var@12,    \
-    @jasm_set_var@12.flags - @jasm_set_var@12, \
+    @jasm_set_var@12.buffer   - @jasm_set_var@12,    \
+    @jasm_set_var@12.bufsize  - @jasm_set_var@12,    \
+    @jasm_set_var@12.alloc    - @jasm_set_var@12,    \
+    @jasm_set_var@12.free     - @jasm_set_var@12,    \
+    @jasm_set_var@12.rsltptr  - @jasm_set_var@12,    \
+    @jasm_set_var@12.flags    - @jasm_set_var@12,    \
 
 table_size dd $-table
 
@@ -167,19 +227,23 @@ table_size dd $-table
 
     .buffer:
     mov [ecx+BUFFER_OFFSET], eax
-    jmp .exit
+    add esp, 8                                ; fastcall stack cleanup
+    jmp [esp-8]
 
     .bufsize:
     mov [ecx+BUFSIZE_OFFSET], eax
-    jmp .exit
+    add esp, 8
+    jmp [esp-8]
 
     .alloc:
     mov [ecx+ALLOC_PROC_OFFSET], eax
-    jmp .exit
+    add esp, 8
+    jmp [esp-8]
 
     .free:
     mov [ecx+FREE_PROC_OFFSET], eax
-    jmp .exit
+    add esp, 8
+    jmp [esp-8]
 
     .rsltptr:
     test eax, 0
@@ -187,16 +251,14 @@ table_size dd $-table
     lea eax, [ecx+RESULT_OFFSET]
 	.rsltptr_nz:
         mov [ecx+RSLTPTR_OFFSET], eax
-    jmp .exit
+    add esp, 8
+    jmp [esp-8]
 
     .flags:
     mov [ecx+FLAGS_OFFSET], eax
-    jmp .exit
-
-
-    .exit:
-    add esp, 8                                ; fastcall stack cleanup
+    add esp, 8
     jmp [esp-8]
+
 
 
 
@@ -249,22 +311,6 @@ skipws:
 
 
 
-
-[section .text]
-
-;**********************************************************************
-; Calculate the length of a zero-terminated string
-;
-;**********************************************************************
-strlen:
-    .mem do `\x0`,
-    vmovdqu  xmm1, oword [.mem]
-    vpcmpeqb xmm0, xmm1, oword[edi]                                  ; compare the bytes
-    vpmovmskb eax, xmm0
-    ;bsf       ; find bit set to 1
-    ;jz        ; no '0' found, add vec size to length, progress pointer and try again
-    add      edi, 16
-	
 
 
 
@@ -338,19 +384,19 @@ strlen:
 ;*********************************************************************
 
 @jasm_parse@4:
-	sub esp, 8   ; create space on the stack for locals
+    sub esp, 8   ; create space on the stack for locals
 
-	mov ebp, ecx
-	;movzx eax, word [ecx+PHASE_OFFSET]        ; eax = parser->phase
-	mov eax, dword [ecx+PHASE_OFFSET]         ; eax = parser->phase
-	add eax, .bgn                             ; add .bgn address to phase offset
-	jmp eax                                   ; jump to phase address
+    mov ebp, ecx
+    ;movzx eax, word [ecx+PHASE_OFFSET]        ; eax = parser->phase
+    mov eax, dword [ecx+PHASE_OFFSET]         ; eax = parser->phase
+    add eax, .bgn                             ; add .bgn address to phase offset
+    jmp eax                                   ; jump to phase address
 
-	;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
+    ;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
 
 
 .sws:   ; skip whitespace
-	jmp eax
+    jmp eax
 
 .bgn:
 	; first, if bufsize is zero we assume buffer is a zero-terminated string
@@ -366,69 +412,70 @@ strlen:
 
 
 .aov:   ; should just set the value to nullarr and not create a new namespace object
-	mov eax, .aov - .bgn; store the jmp address
-	mov [ebp], eax
-	; call skipws
-	 
-	test byte [eax], 0x5d               ; if(*ptr == ']') 
-	je .lns
+    mov eax, .aov - .bgn; store the jmp address
+    mov [ebp], eax
+    ; call skipws
+    add
+
+    test byte [eax], 0x5d               ; if(*ptr == ']') 
+    je .lns
 
 .abv:
-	mov eax, .abv - .bgn
-	mov [ebp+0], eax
-	; call skipws
-	; validate value
-	; 
+    mov eax, .abv - .bgn
+    mov [ebp+0], eax
+    ; call skipws
+    ; validate value
+    ; 
 
 	
 .aev:
-	mov eax, .aev - .bgn
-	mov [ebp+0], eax
-	; skip whitespace
+    mov eax, .aev - .bgn
+    mov [ebp+0], eax
+    ; skip whitespace
 
-	test byte [eax], 0x2c               ; if(*ptr == ',')
-	je .abv
-	test byte [eax], 0x5d               ; if(*ptr == ']')
-	je .lns
-	; error here
+    test byte [eax], 0x2c               ; if(*ptr == ',')
+    je .abv
+    test byte [eax], 0x5d               ; if(*ptr == ']')
+    je .lns
+    ; error here
 
 
 .ook:   ; should just set the value to nullobj and not create a new namespace object
-	mov eax, .ook - .bgn
-	mov [ebp+0], eax
-	call .sws
+    mov eax, .ook - .bgn
+    mov [ebp+0], eax
+    call .sws
 
-	test byte [eax], 0x7d               ; if(*ptr == '}')
-	je .lns
+    test byte [eax], 0x7d               ; if(*ptr == '}')
+    je .lns
 
 .obk:
-	mov eax, .obk - .bgn
-	mov [ecx+0], eax
-	; skip whitespace
-	test byte [ebp], 0x22                    ; if(*ptr == '"')
-	jne .err
+    mov eax, .obk - .bgn
+    mov [ecx+0], eax
+    ; skip whitespace
+    test byte [ebp], 0x22                    ; if(*ptr == '"')
+    jne .err
 
 .oek:
-	mov eax, .oek - .bgn
-	mov [ebp+0], eax
-	; skip whitespace
-	test byte [eax], 0x3a                ; if(*ptr == ':')
-	;jne .err
+    mov eax, .oek - .bgn
+    mov [ebp+0], eax
+    ; skip whitespace
+    test byte [eax], 0x3a                ; if(*ptr == ':')
+    ;jne .err
 
 .obv:
-	mov eax, .obv - .bgn
-	mov [ebp+0], eax
-	; skip whitespace
+    mov eax, .obv - .bgn
+    mov [ebp+0], eax
+    ; skip whitespace
 
 .oev:
-	mov eax, .oev - .bgn
-	mov [ebp+0], eax
-	; skip whitespace
+    mov eax, .oev - .bgn
+    mov [ebp+0], eax
+    ; skip whitespace
 
-	test byte [eax], 0x2c                ; if(*ptr == ',')
-	je .obk
-	test byte [eax], 0x7d                ; if(*ptr == '}')
-	je .lns
+    test byte [eax], 0x2c                ; if(*ptr == ',')
+    je .obk
+    test byte [eax], 0x7d                ; if(*ptr == '}')
+    je .lns
 
 .lns:
 	; if(curns == rootns) jmp .finalize 
