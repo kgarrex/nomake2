@@ -43,34 +43,38 @@ typedef struct _jasm512
 } _jasm512_t;
 
 
-#define JASMCALL __fastcall
+#define JASMCALL_FASTCALL __fastcall
+#define JASMCALL_CDECL __cdecl
 
-int __fastcall jasm_strlen(char *str);
+int JASMCALL_FASTCALL jasm_strlen(char *str);
 
 
 /*
  * Initialize the jasm library. Must be called before calling any other jasm procedure
  */
-int JASMCALL jasm_init(void *jasm);
+int JASMCALL_FASTCALL jasm_init(void *jasm);
 
 
 /**
  * Set a jasm public variable
  */
-void JASMCALL jasm_set_var(void *jasm, int id, void *value);
+void JASMCALL_CDECL jasm_set(void *jasm, int id, ...);
 
 
 /**
  * Get a jasm public variable value
  */
-void * JASMCALL jasm_get_var(void *jasm, int id);
+void * JASMCALL_FASTCALL jasm_get(void *jasm, int id);
 
 
 
 
-int __fastcall jasm_load_buf(void *jasm, char *utf8, int length);
+int JASMCALL_FASTCALL jasm_load_buf(void *jasm, char *utf8, int length);
 
-void __fastcall jasm_parse(void *jasm);
+
+//void JASMCALL_FASTCALL jasm_parse(jasm_t * jasm);
+void JASMCALL_FASTCALL jasm_parse(jasm_t * jasm);
+
 
 
 

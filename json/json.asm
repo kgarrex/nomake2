@@ -13,45 +13,7 @@
 ;  64    | 512  | zword | dz     | resz
 
 
-; 3 bit parser state values
-ARR_OPT_VAL equ 0
-ARR_REQ_VAL equ 1
-ARR_END_VAL equ 2
-OBJ_OPT_KEY equ 3
-OBJ_REQ_KEY equ 4
-OBJ_END_KEY equ 5
-OBJ_REQ_VAL equ 6
-OBJ_END_VAL equ 7
 
-
-[section .bss] ; data?
-
-struc parser_state
-	phase:   resb 1
-endstruc
-
-
-
-[section .data]
-
-
-char_table db                                   \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 
@@ -97,8 +59,8 @@ FREE_PROC_OFFSET       equ NS_STACK_OFFSET - 4
 NS_STACK_OFFSET        equ JASM_MAX_SIZE-(NUM_NAMESPACE_LEVEL*4)
 
 
-BGN                    equ @jasm_parse@4.bgn - @jasm_parse@4
-OEV                    equ @jasm_parse@4.oev - @jasm_parse@4.bgn
+BGN                    equ internal_parse128.bgn - internal_parse128 
+OEV                    equ internal_parse128.oev - internal_parse128.bgn
 
 
 JASM_VAR_BUFFER         equ 0
@@ -124,10 +86,10 @@ JASM_FLAG_PARSE_NO_DUP_KEYS    equ 0x10    ; no duplicate keys in an object; TOD
 ; edi = char *str
 ;
 ;**********************************************************************
-@jasm_strlen@4:
+internal_strlen:
     push edi ;temp
     mov edi, ecx
-    vpxor ymm1, ymm1
+    vpxor ymm1, ymm1                              ; zero-out register for comparison
     ;mov ecx, edi
     .loop:
     vpcmpeqb ymm0, ymm1, yword [ecx]              ; compare the bytes
@@ -146,21 +108,61 @@ JASM_FLAG_PARSE_NO_DUP_KEYS    equ 0x10    ; no duplicate keys in an object; TOD
 
 
 
+; void memcpy(dest, src, nbytes)
+; edi = dest
+; esi = src
+; ecx = nbytes 
+internal_memcpy128:
+    ;test ecx, 0xfffffff6
+
+    ; transfer 64 bytes at time
+    vmovdqa xmm0, [esi]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+16]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+32]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+64]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+80]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+96]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+112]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+128]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+144]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+160]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+176]
+    sub edx, 
+
+
+internal_memcpy256:
+    vmovdqa ymm0, [esi]
+    vmovdqa [edi], ymm0
+
+
+
 
 
 
 ;-------- PUBLIC API ----------------
 
 global @jasm_init@4
-global @jasm_parse@8
-global @jasm_set_var@12
-global @jasm_get_var@8
+global @jasm_parse@4
+global _jasm_set
+global @jasm_get@8
 global @jasm_rename_key@12
 global @jasm_find_key@12
 global @jasm_get_value@12
 global @jasm_set_value@12
 global @jasm_add_value@4
 global @jasm_value_type@4
+
+; The following exports are for debug purposes only
 global @jasm_strlen@4
 
 
@@ -202,12 +204,10 @@ global @jasm_strlen@4
 [section .rdata]
 
 table: dw \
-    @jasm_set_var@12.buffer   - @jasm_set_var@12,    \
-    @jasm_set_var@12.bufsize  - @jasm_set_var@12,    \
-    @jasm_set_var@12.alloc    - @jasm_set_var@12,    \
-    @jasm_set_var@12.free     - @jasm_set_var@12,    \
-    @jasm_set_var@12.rsltptr  - @jasm_set_var@12,    \
-    @jasm_set_var@12.flags    - @jasm_set_var@12,    \
+    _jasm_set.buffer  - _jasm_set, \
+    _jasm_set.alloc   - _jasm_set, \
+    _jasm_set.rsltptr - _jasm_set, \
+    _jasm_set.flags   - _jasm_set, \
 
 table_size dd $-table
 
@@ -215,49 +215,45 @@ table_size dd $-table
 [section .text]
 
 ;***************************************************
-; ecx - jasm_t *
-; edx - varid
-; [esp+4] - value
+; [esp+4]  - jasm_t *
+; [esp+8]  - varid
+; [esp+12] - value
 ;***************************************************
-@jasm_set_var@12:
-    mov eax, [esp+4]
-    mov edx, [table+edx*4]
-    add edx, @jasm_set_var@12
-    jmp edx 	
+_jasm_set:
+    mov edx, [esp+4]              ; get jasm_t *
+    mov ecx, [esp+8]              ; get id value
+    mov eax, [table+ecx*4]
+    add eax, _jasm_set
+    jmp eax
 
     .buffer:
-    mov [ecx+BUFFER_OFFSET], eax
-    add esp, 8                                ; fastcall stack cleanup
-    jmp [esp-8]
-
-    .bufsize:
-    mov [ecx+BUFSIZE_OFFSET], eax
-    add esp, 8
-    jmp [esp-8]
+    mov eax, [esp+12]
+    mov [edx+BUFFER_OFFSET], eax 
+    mov eax, [esp+16]
+    ; may want to test buffer size here
+    mov [edx+BUFSIZE_OFFSET], eax
+    jmp [esp]
 
     .alloc:
-    mov [ecx+ALLOC_PROC_OFFSET], eax
-    add esp, 8
-    jmp [esp-8]
-
-    .free:
-    mov [ecx+FREE_PROC_OFFSET], eax
-    add esp, 8
-    jmp [esp-8]
+    mov eax, [esp+12]
+    mov [edx+ALLOC_PROC_OFFSET], eax 
+    mov eax, [esp+16]
+    ; may want to test buffer size here
+    mov [edx+FREE_PROC_OFFSET], eax
+    jmp [esp]
 
     .rsltptr:
+    mov eax, [esp+12]
     test eax, 0
     jnz short .rsltptr_nz ; TODO get size of lea instruction and just jump by that
-    lea eax, [ecx+RESULT_OFFSET]
-	.rsltptr_nz:
-        mov [ecx+RSLTPTR_OFFSET], eax
-    add esp, 8
-    jmp [esp-8]
+    lea eax, [edx+RESULT_OFFSET]
+    .rsltptr_nz: mov [edx+RSLTPTR_OFFSET], eax
+    jmp [esp]
 
     .flags:
-    mov [ecx+FLAGS_OFFSET], eax
-    add esp, 8
-    jmp [esp-8]
+    mov eax, [esp+12]
+    mov [edx+FLAGS_OFFSET], eax
+    jmp [esp]
 
 
 
@@ -283,8 +279,8 @@ jasm_set_table db                              \
 	.get_busize:
 	.get_alloc:
 
-	add esp, 4
-	jmp [esp-4]                               ; fastcall stack cleanup
+	add esp, 8
+	jmp [esp-8]                               ; fastcall stack cleanup
 
 
 
@@ -313,10 +309,80 @@ skipws:
 
 
 
+wstable: dq                                                                         \
+    0x2020202020202020, 0x2020202020202020, 0x2020202020202020, 0x2020202020202020, \
+    0x2020202020202020, 0x2020202020202020, 0x2020202020202020, 0x2020202020202020, \
+    0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, \
+    0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, 0x0D0D0D0D0D0D0D0D, \
+    0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, \
+    0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A, \
+    0x0909090909090909, 0x0909090909090909, 0x0909090909090909, 0x0909090909090909, \
+    0x0909090909090909, 0x0909090909090909, 0x0909090909090909, 0x0909090909090909
+
+
+DQU   equ 0
+COM   equ 0
+ZER   equ 0
+ONE   equ 0
+TWO   equ 0
+THR   equ 0
+FOU   equ 0
+FIV   equ 0
+SIX   equ 0
+SEV   equ 0
+EIG   equ 0
+NIN   equ 0
+NUM   equ 0
+COL   equ 0
+LSB   equ 0
+BSL   equ 0
+RSB   equ 0
+FAL   equ 0
+NUL   equ 0
+TRU   equ 0
+LCB   equ 0
+RCB   equ 0
+
+;TODO This is a good place to optimize for memory or speed
+;TODO if speed use label address, if memory use offset (ex. jmptable dw/dd/dq)
+jmptable: db \
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, \
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, \
+    0x0, 0x0, DQU, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, COM, 0x0, 0x0, 0x0, \
+    ZER, ONE, TWO, THR, FOU, FIV, SIX, SEV, EIG, NIN, COL, 0x0, 0x0, 0x0, 0x0, 0x0, \
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, \
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, LSB, BSL, RSB, 0x0, 0x0, \
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, FAL, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, NUL, 0x0, \
+    0x0, 0x0, 0x0, 0x0, TRU, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, LCB, 0x0, RCB, 0x0, 0x0, \
+
+
+; 3 bit parser state values
+ARR_OPT_VAL equ 0
+ARR_REQ_VAL equ 1
+ARR_END_VAL equ 2
+OBJ_OPT_KEY equ 3
+OBJ_REQ_KEY equ 4
+OBJ_END_KEY equ 5
+OBJ_REQ_VAL equ 6
+OBJ_END_VAL equ 7
+
+
+
+OBJECT_BIT  equ 0x01
+ARRAY_BIT   equ 0x02
+STRING_BIT  equ 0x04
+NUMBER_BIT  equ 0x08
+BOOLEAN_BIT equ 0x10
+NULL_BIT    equ 0x20
+NODQU_BIT   equ 0x40
+
+
+
 
 ;*********************************************************************
 ; jasm_parse - JSON parser in pure assembly
 ;
+; Parser States:
 ; .bgn - Begin parser
 ;        Initialize the parser and create the root namespace
 ;
@@ -367,23 +433,59 @@ skipws:
 ; ebp  - jasm_t *
 ; esi  - stack index
 ; edi  - string
-; esp  -
+; [esp+4]  -
+; [esp+8]  -
+; [esp+12] -
+; [esp+16] -
 ; 
 ;
-; 0x5b - left square bracket
-; 0x5d - right square bracket
-; 0x7b - left curly brace
-; 0x7d - right curly brace
-; 0x2c - comma
-; 0x3a - colon
-; 0x22 - double quote
-; 0x5c - backslash
-; 0x66 - f (false)
-; 0x74 - t (true)
-; 0x6e - n (null)
+; wstable: a table of whitespace chars to filter
+; json_buffer: the start of the json buffer
+; block_count (ebx): the number of chars left in the working block
+; stack_index: the current level in the namespace stack
+; json_ptr: a pointer to the current char in the json string
+; json_len: the total length of the json string in the buffer
+;
+;
+; States Bits:
+; .newv - The parser has just found a new value
+; .req? - The parser is now expecting a new array value or object key string
+; .newk - The parser is expecting a new key string
+; REQ?_STATE - 0x1
+; 
+;
+; 0x5b - left square bracket   01011011
+; 0x5d - right square bracket  01011101
+; 0x7b - left curly brace      01111011
+; 0x7d - right curly brace     01111101
+; 0x2c - comma                 00101100
+; 0x3a - colon                 00111010
+; 0x22 - double quote          00100010
+; 0x5c - backslash             01011100
+; 0x66 - f (false)             01100110
+; 0x74 - t (true)              01110100
+; 0x6e - n (null)              01101110
+;
+; 0x09 - horizontal tab        00001001
+; 0x0a - line feed             00001010
+; 0x0d - carriage return       00001101
+; 0x20 - space                 00100000
+;
 ;*********************************************************************
 
+
+
 @jasm_parse@4:
+    
+    ;call internal_parse128
+    add esp, 4
+    jmp [esp-4]
+
+
+
+
+
+internal_parse128:
     sub esp, 8   ; create space on the stack for locals
 
     mov ebp, ecx
@@ -392,30 +494,91 @@ skipws:
     add eax, .bgn                             ; add .bgn address to phase offset
     jmp eax                                   ; jump to phase address
 
+    ;test [ecx+] 
+
+
+    vmovdqu xmm3, oword [wstable]
+    vmovdqu xmm4, oword [wstable+64]
+    vmovdqu xmm5, oword [wstable+128]
+    vmovdqu xmm6, oword [wstable+192]
+
     ;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
 
 
-.sws:   ; skip whitespace
+    ;sub ecx
+    .next_block:
+    vmovdqu   xmm2, oword [edi]
+    vpcmpeqb  xmm0, xmm2, xmm3 
+    vpcmpeqb  xmm1, xmm2, xmm4
+    vpor      xmm0, xmm0, xmm1
+    vpcmpeqb  xmm1, xmm2, xmm5
+    vpor      xmm0, xmm0, xmm1
+    vpcmpeqb  xmm1, xmm2, xmm6
+    vpor      xmm0, xmm0, xmm1
+    vpmovmskb eax,  xmm0
+    not       eax                        ; flip masked bits
+
+    .next_char:
+    bsf ecx, eax                     ; get next char
+    jz .next_block
+    ;add edi, 16 ; /32/64
+    shr eax, cl                      ; remove bits before next char
+    sub ebx, ecx                     ; decrement count by whitespace chars
+    movzx eax, byte [edi+eax*1]      ; store the current char in a register
+    mov eax, [jmptable+eax]
+    add eax, internal_parse128
     jmp eax
+    ;.bgn label that structure labels are offset from
+        
+
+    .com: ; a comma was found
+    ; test if we're in an object then go look for a new key,
+    ; else assume we're in an array, then go look for a new value
+    .dqu:
+    ;  if NODQU_BIT == true, then error
+    ; else if OBJECT_BIT == true then create object key
+    ; else create array string value
+    ;bsf reg, reg  ; find next char in block
+    ;jz next_block
+    .com: ; TODO we should never come across a comma randomly in a document so this should be an error
+    .col: ; TODO we should never come across a colon randomly in a document so this should be an error
+    ; if COL_BIT == false, then error 
+    ; else we've just created a new key, unset NODQU_BIT & COL_BIT
+    .lsb:
+    .bsl:
+    .rsb:
+    .fal:
+    .nul:
+    .tru:
+    .lcb:
+    .rcb:
+
+
 
 .bgn:
-	; first, if bufsize is zero we assume buffer is a zero-terminated string
-	; we need to find string length
-	; if parser->phase == 0, start parsing from scratch
-	; skip white space
-	; check if first char start of array '[' or object '{'
-	; set the type on the current namespace
+    ; first, if bufsize is zero we assume buffer is a zero-terminated string
+    ; we need to find string length
+    ; if parser->phase == 0, start parsing from scratch
+    ; skip white space
+    ; check if first char start of array '[' or object '{'
+    ; set the type on the current namespace
 
 .ens:
-	; if the type of the current namespace is an object
-	; jmp to ook
+    ; if the type of the current namespace is an object
+    ; jmp to ook
 
 
 .aov:   ; should just set the value to nullarr and not create a new namespace object
-    mov eax, .aov - .bgn; store the jmp address
+    mov eax, [edi]                             ; skip whitespace
+    add edi, [ebx+eax]
+    sub ecx, [ebx+eax]                         ; decrement the length
+    and eax, eax
+    jnz short -10
+    ;mov eax, .aov - .bgn; store the jmp address
+    mov [ecx+PHASE_OFFSET], word .aov - .bgn; store the jmp address
     mov [ebp], eax
     ; call skipws
-    add
+    ;add
 
     test byte [eax], 0x5d               ; if(*ptr == ']') 
     je .lns
@@ -425,7 +588,6 @@ skipws:
     mov [ebp+0], eax
     ; call skipws
     ; validate value
-    ; 
 
 	
 .aev:
@@ -443,7 +605,7 @@ skipws:
 .ook:   ; should just set the value to nullobj and not create a new namespace object
     mov eax, .ook - .bgn
     mov [ebp+0], eax
-    call .sws
+    ;call .sws
 
     test byte [eax], 0x7d               ; if(*ptr == '}')
     je .lns
@@ -493,3 +655,48 @@ skipws:
 .fin:
 
 .err:
+
+
+;internal_parse256:
+
+
+
+
+
+;internal_parse512:
+
+
+[section .bss] ; data?
+
+struc parser_state
+	phase:   resb 1
+endstruc
+
+
+
+[section .data]
+
+
+char_table db                                   \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+
+
+
+

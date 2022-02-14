@@ -92,10 +92,12 @@ int __cdecl main(int argc, char **argv)
 		printf("Char: %c\n", c);
 	}
 
-	printf("Long Multiplication: %u\n", (1 << 5));
 
-	int len = jasm_strlen(test_string);
-	printf("len %u\n", len);
+	jasm_parse(&jasm);
+
+	//printf("Long Multiplication: %u\n", (1 << 5));
+
+	//printf("len %u\n", len);
 
 
 	return 1;
