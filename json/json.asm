@@ -115,12 +115,14 @@ internal_strlen:
 internal_memcpy128:
     ;test ecx, 0xfffffff6
 
-    ; transfer 64 bytes at time
+    ;transfer 256 bytes per unrolled loop
     vmovdqa xmm0, [esi]
     vmovdqa [edi], xmm0
     vmovdqa xmm0, [esi+16]
     vmovdqa [edi], xmm0
     vmovdqa xmm0, [esi+32]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+48]
     vmovdqa [edi], xmm0
     vmovdqa xmm0, [esi+64]
     vmovdqa [edi], xmm0
@@ -137,12 +139,65 @@ internal_memcpy128:
     vmovdqa xmm0, [esi+160]
     vmovdqa [edi], xmm0
     vmovdqa xmm0, [esi+176]
-    sub edx, 
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+192]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+208]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+224]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+240]
+    vmovdqa [edi], xmm0
+    ;sub edx, 
 
 
+;void memcpy(dest, src, nbytes)
+; edi = dest
+; esi = src
+; ecx = nbytes
 internal_memcpy256:
-    vmovdqa ymm0, [esi]
-    vmovdqa [edi], ymm0
+
+    ; if less than 32 bytes...
+    vmovdqa xmm0, [esi]
+    vmovdqa [edi], xmm0
+    vmovdqa xmm0, [esi+16]
+    vmovdqa [edi], xmm0
+
+    ; if greater than or equal to 32 bytes...
+    ;transfer 512 bytes per unrolled loop
+    vmovdqa ymm0,      [esi]
+    vmovdqa [edi],     ymm0
+    vmovdqa ymm0,      [esi+32]
+    vmovdqa [edi+32],  ymm0
+    vmovdqa ymm0,      [esi+64]
+    vmovdqa [edi+64],  ymm0
+    vmovdqa ymm0,      [esi+92]
+    vmovdqa [edi+92],  ymm0
+    vmovdqa ymm0,      [esi+128]
+    vmovdqa [edi+128], ymm0
+    vmovdqa ymm0,      [esi+160]
+    vmovdqa [edi+160], ymm0
+    vmovdqa ymm0,      [esi+192]
+    vmovdqa [edi+192], ymm0
+    vmovdqa ymm0,      [esi+224]
+    vmovdqa [edi+224], ymm0
+    vmovdqa ymm0,      [esi+256]
+    vmovdqa [edi+256], ymm0
+    vmovdqa ymm0,      [esi+288]
+    vmovdqa [edi+288], ymm0
+    vmovdqa ymm0,      [esi+320]
+    vmovdqa [edi+320], ymm0
+    vmovdqa ymm0,      [esi+352]
+    vmovdqa [edi+352], ymm0
+    vmovdqa ymm0,      [esi+384]
+    vmovdqa [edi+384], ymm0
+    vmovdqa ymm0,      [esi+416]
+    vmovdqa [edi+416], ymm0
+    vmovdqa ymm0,      [esi+448]
+    vmovdqa [edi+448], ymm0
+    vmovdqa ymm0,      [esi+480]
+    vmovdqa [edi+480], ymm0
+ 
 
 
 
