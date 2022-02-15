@@ -15,6 +15,8 @@
 
 
 
+REGSIZE equ 4
+
 
 
 
@@ -79,14 +81,31 @@ JASM_FLAG_PARSE_NO_DUP_KEYS    equ 0x10    ; no duplicate keys in an object; TOD
 
 
 
-
 ;**********************************************************************
+;
 ; Calculate the length of a zero-terminated string
 ;
 ; edi = char *str
 ;
 ;**********************************************************************
-internal_strlen:
+internal_strlen128:
+    vpxor xmm1, xmm1
+    .loop:
+    vpcmpeqb xmm0, xmm1, oword [ecx]
+    vpmovmskb eax, xmm0
+    bsf eax, eax
+    jnz .exit
+    add ecx, 16
+    jmp .loop
+    .exit:
+    sub ecx, edi
+    add eax, ecx
+    pop edi
+    add esp, 4
+    jmp [esp-4]
+
+
+internal_strlen256:
     push edi ;temp
     mov edi, ecx
     vpxor ymm1, ymm1                              ; zero-out register for comparison
@@ -151,11 +170,16 @@ internal_memcpy128:
     ;sub edx, 
 
 
+;00000010 00000001
+
+
 ;void memcpy(dest, src, nbytes)
 ; edi = dest
 ; esi = src
 ; ecx = nbytes
 internal_memcpy256:
+
+    ror ecx, 10
 
     ; if less than 32 bytes...
     vmovdqa xmm0, [esi]
@@ -165,8 +189,8 @@ internal_memcpy256:
 
     ; if greater than or equal to 32 bytes...
     ;transfer 512 bytes per unrolled loop
-    vmovdqa ymm0,      [esi]
-    vmovdqa [edi],     ymm0
+    vmovdqa ymm0,      [esi+0]
+    vmovdqa [edi+0],   ymm0
     vmovdqa ymm0,      [esi+32]
     vmovdqa [edi+32],  ymm0
     vmovdqa ymm0,      [esi+64]
@@ -423,13 +447,25 @@ OBJ_END_VAL equ 7
 
 
 
-OBJECT_BIT  equ 0x01
-ARRAY_BIT   equ 0x02
-STRING_BIT  equ 0x04
-NUMBER_BIT  equ 0x08
-BOOLEAN_BIT equ 0x10
-NULL_BIT    equ 0x20
+IS_OBJECT   equ 0x01
+IS_ARRAY    equ 0x02
+IS_STRING   equ 0x04
+IS_NUMBER   equ 0x08
+IS_BOOLEAN  equ 0x10
+IS_NULL     equ 0x20
 NODQU_BIT   equ 0x40
+ALLOW_QUOTES
+
+
+
+
+
+
+@jasm_parse@4:
+    
+    ;call internal_parse128
+    add esp, 4
+    jmp [esp-4]
 
 
 
@@ -482,7 +518,7 @@ NODQU_BIT   equ 0x40
 ;
 ;
 ; eax  -
-; ebx  -
+; ebx  - state
 ; ecx  - length
 ; edx  - 
 ; ebp  - jasm_t *
@@ -527,21 +563,10 @@ NODQU_BIT   equ 0x40
 ; 0x20 - space                 00100000
 ;
 ;*********************************************************************
-
-
-
-@jasm_parse@4:
-    
-    ;call internal_parse128
-    add esp, 4
-    jmp [esp-4]
-
-
-
-
-
 internal_parse128:
     sub esp, 8   ; create space on the stack for locals
+
+    ;test ebp[
 
     mov ebp, ecx
     ;movzx eax, word [ecx+PHASE_OFFSET]        ; eax = parser->phase
@@ -560,7 +585,9 @@ internal_parse128:
     ;lea edi, [ecx+esi*4+NS_STACK_OFFSET]     ; current namespace pointer
 
 
-    ;sub ecx
+    xor ebx, ebx                              ; set the state to zero
+
+    ;find the first structure of the document
     .next_block:
     vmovdqu   xmm2, oword [edi]
     vpcmpeqb  xmm0, xmm2, xmm3 
@@ -577,6 +604,8 @@ internal_parse128:
     bsf ecx, eax                     ; get next char
     jz .next_block
     ;add edi, 16 ; /32/64
+    
+    test 0xf, [edi+ecx]
     shr eax, cl                      ; remove bits before next char
     sub ebx, ecx                     ; decrement count by whitespace chars
     movzx eax, byte [edi+eax*1]      ; store the current char in a register
@@ -589,7 +618,7 @@ internal_parse128:
     .com: ; a comma was found
     ; test if we're in an object then go look for a new key,
     ; else assume we're in an array, then go look for a new value
-    .dqu:
+    .dqu: ; a double quote was found
     ;  if NODQU_BIT == true, then error
     ; else if OBJECT_BIT == true then create object key
     ; else create array string value
